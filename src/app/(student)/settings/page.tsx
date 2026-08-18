@@ -6,6 +6,11 @@ import { useAuth } from "@/context/AuthContext";
 import { useAsync } from "@/lib/useAsync";
 import { getRepository } from "@/lib/data";
 import { CARGO_OPTIONS } from "@/lib/brand/lists";
+import {
+  DOCUMENT_TYPE_OPTIONS,
+  isPendingDocumentNumber,
+  validateDocumentNumber,
+} from "@/lib/brand/documentTypes";
 import { Card } from "@/components/ui/Card";
 import { Label } from "@/components/ui/Label";
 import { Button } from "@/components/ui/Button";
@@ -22,6 +27,7 @@ export default function SettingsPage() {
   const [reloadKey, setReloadKey] = useState(0);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [documentError, setDocumentError] = useState<string>();
 
   const { data: areaOptions } = useAsync(
     () => getRepository().listAreaOptions(),
@@ -36,14 +42,24 @@ export default function SettingsPage() {
   async function submitAccount(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!user || !profile) return;
-    setSaving(true);
     const form = new FormData(e.currentTarget);
-    const cedula = String(form.get("cedula") ?? "").trim();
+    const documentType = String(form.get("documentType") ?? "");
+    const documentNumber = String(form.get("documentNumber") ?? "");
+
+    const docError = validateDocumentNumber(documentType, documentNumber);
+    if (docError) {
+      setDocumentError(docError);
+      return;
+    }
+    setDocumentError(undefined);
+
+    setSaving(true);
     await getRepository().saveStudentProfile({
       ...profile,
       nombres: String(form.get("nombres") ?? ""),
       apellidos: String(form.get("apellidos") ?? ""),
-      cedula: cedula || undefined,
+      documentType,
+      documentNumber: documentNumber.trim(),
       cargo: String(form.get("cargo") ?? ""),
       area: String(form.get("area") ?? ""),
     });
@@ -66,6 +82,17 @@ export default function SettingsPage() {
       </div>
     );
   }
+
+  // Si el área guardada ya no está en el catálogo vigente (el profesor la
+  // borró/renombró en Configuración del profesor), se inyecta como opción
+  // extra para que el <select> siga mostrando fielmente lo que la persona
+  // tiene guardado — de lo contrario el navegador cae en silencio a la
+  // primera opción de la lista y, al guardar, esa área equivocada
+  // sobreescribe la real.
+  const effectiveAreaOptions =
+    profile.area && !(areaOptions ?? []).includes(profile.area)
+      ? [profile.area, ...(areaOptions ?? [])]
+      : (areaOptions ?? []);
 
   return (
     <div className="mx-auto max-w-2xl px-8 py-8">
@@ -97,14 +124,28 @@ export default function SettingsPage() {
             />
           </div>
 
-          <Input
-            id="cedula"
-            name="cedula"
-            label="Cédula"
-            icon={CreditCard}
-            defaultValue={profile.cedula ?? ""}
-            placeholder="Opcional"
-          />
+          <div className="grid grid-cols-2 gap-3">
+            <Select
+              id="documentType"
+              name="documentType"
+              label="Tipo de documento"
+              icon={CreditCard}
+              options={DOCUMENT_TYPE_OPTIONS}
+              defaultValue={profile.documentType}
+              required
+            />
+            <Input
+              id="documentNumber"
+              name="documentNumber"
+              label="Número de documento"
+              icon={CreditCard}
+              defaultValue={
+                isPendingDocumentNumber(profile.documentNumber) ? "" : profile.documentNumber
+              }
+              error={documentError}
+              required
+            />
+          </div>
 
           <Select
             id="cargo"
@@ -121,7 +162,7 @@ export default function SettingsPage() {
             name="area"
             label="Área o programa"
             icon={LayoutGrid}
-            options={areaOptions ?? []}
+            options={effectiveAreaOptions}
             defaultValue={profile.area}
             required
           />

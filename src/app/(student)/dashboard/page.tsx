@@ -8,7 +8,6 @@ import {
   ChevronDown,
   Gauge,
   HelpCircle,
-  Lock,
   LogOut,
   Play,
   Settings,
@@ -46,7 +45,7 @@ export default function DashboardPage() {
             new Date().toISOString(),
           )
         : Promise.resolve(null),
-    [user?.id, reloadKey],
+    [user?.id, user?.displayName, reloadKey],
   );
   const { data: profile } = useAsync(
     () =>
@@ -86,7 +85,6 @@ export default function DashboardPage() {
   const profileMenuItems = [
     { label: "Mi actividad", icon: Gauge, href: undefined },
     { label: "Configuración de la cuenta", icon: Settings, href: "/settings" },
-    { label: "Configuración de privacidad", icon: Lock, href: "/settings#privacidad" },
     { label: "Soporte", icon: HelpCircle, href: undefined },
   ];
 

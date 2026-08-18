@@ -38,6 +38,8 @@ interface AuthValue {
   /** Solo tiene efecto en modo mock — ver doc de arriba. */
   loginAs: (userId: string) => Promise<void>;
   logout: () => void;
+  /** Vuelve a leer el usuario actual sin recargar la página — para reflejar un cambio (nombre, foto) hecho mientras ya se está usando la app. */
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthValue | null>(null);
@@ -96,7 +98,10 @@ function useMockAuth(): AuthValue {
     setUser(null);
   }, []);
 
-  return useMemo(() => ({ user, loading, loginAs, logout }), [user, loading, loginAs, logout]);
+  return useMemo(
+    () => ({ user, loading, loginAs, logout, refreshUser: load }),
+    [user, loading, loginAs, logout, load],
+  );
 }
 
 function useSupabaseAuth(): AuthValue {
@@ -173,7 +178,18 @@ function useSupabaseAuth(): AuthValue {
     setUser(null);
   }, [supabase]);
 
-  return useMemo(() => ({ user, loading, loginAs, logout }), [user, loading, loginAs, logout]);
+  const refreshUser = useCallback(async () => {
+    if (!supabase) return;
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (session?.user) await loadProfile(session.user.id);
+  }, [supabase, loadProfile]);
+
+  return useMemo(
+    () => ({ user, loading, loginAs, logout, refreshUser }),
+    [user, loading, loginAs, logout, refreshUser],
+  );
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {

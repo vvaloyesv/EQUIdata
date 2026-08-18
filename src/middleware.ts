@@ -26,9 +26,6 @@ const STUDENT_PATHS = [
   "/certifications",
 ];
 
-/** Requiere sesión, sin exigir un rol específico (perfil aún incompleto). */
-const AUTH_ONLY_PATHS = ["/onboarding"];
-
 function matchesPrefix(pathname: string, prefixes: string[]): boolean {
   return prefixes.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
@@ -39,9 +36,8 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isStudentPath = matchesPrefix(pathname, STUDENT_PATHS);
   const isTeacherPath = pathname === "/teacher" || pathname.startsWith("/teacher/");
-  const isAuthOnlyPath = matchesPrefix(pathname, AUTH_ONLY_PATHS);
 
-  if (!isStudentPath && !isTeacherPath && !isAuthOnlyPath) {
+  if (!isStudentPath && !isTeacherPath) {
     return NextResponse.next();
   }
 

@@ -96,7 +96,8 @@ interface StudentProfileRow {
   apellidos: string;
   cargo: string;
   area: string;
-  cedula: string | null;
+  document_type: string;
+  document_number: string;
   custom_fields: Record<string, string> | null;
   completed: boolean;
   show_name_in_community: boolean | null;
@@ -109,7 +110,8 @@ const toStudentProfile = (r: StudentProfileRow): StudentProfile => ({
   apellidos: r.apellidos,
   cargo: r.cargo,
   area: r.area,
-  cedula: r.cedula ?? undefined,
+  documentType: r.document_type,
+  documentNumber: r.document_number,
   customFields: r.custom_fields ?? undefined,
   completed: r.completed,
   showNameInCommunity: r.show_name_in_community ?? undefined,
@@ -122,7 +124,8 @@ const fromStudentProfile = (p: StudentProfile) => ({
   apellidos: p.apellidos,
   cargo: p.cargo,
   area: p.area,
-  cedula: p.cedula ?? null,
+  document_type: p.documentType,
+  document_number: p.documentNumber,
   custom_fields: p.customFields ?? null,
   completed: p.completed,
   show_name_in_community: p.showNameInCommunity ?? null,
@@ -725,6 +728,33 @@ export class SupabaseRepository implements Repository {
     const { data, error } = await this.supabase.from("profiles").select("*").eq("role", role);
     if (error) throw new Error(error.message);
     return (data as ProfileRow[]).map(toUser);
+  }
+  async updateDisplayName(_userId: string, displayName: string) {
+    // La RLS de `profiles` solo permite UPDATE al profesor — este campo se
+    // actualiza vía API route (service role, identidad verificada por sesión
+    // propia, no por `_userId`) para no abrir la tabla a escritura del cliente.
+    const res = await fetch("/api/profile/display-name", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ displayName }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}) as { error?: string });
+      throw new Error(body.error ?? "No se pudo actualizar el nombre");
+    }
+  }
+  async updateAvatarUrl(_userId: string, avatarUrl: string) {
+    // Mismo motivo que updateDisplayName: RLS de `profiles` solo permite
+    // UPDATE al profesor.
+    const res = await fetch("/api/profile/avatar-url", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ avatarUrl }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}) as { error?: string });
+      throw new Error(body.error ?? "No se pudo actualizar la foto de perfil");
+    }
   }
   async getStudentProfile(userId: string) {
     const { data, error } = await this.supabase

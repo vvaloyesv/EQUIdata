@@ -35,8 +35,10 @@ export interface StudentProfile {
   cargo: string;
   /** Valor de la lista fija de área/programa. */
   area: string;
-  /** Opcional — no todos los perfiles existentes lo traen cargado aún. */
-  cedula?: string;
+  /** Código de la lista fija de tipos de documento (ver src/lib/brand/documentTypes.ts). Obligatorio. */
+  documentType: string;
+  /** Obligatorio. Cuentas creadas antes de este campo quedan con un valor centinela ("PENDIENTE-<userId>") hasta que la persona lo complete. */
+  documentNumber: string;
   /** Respuestas a los campos de onboarding que agregó el profesor, por `OnboardingFieldDef.id`. */
   customFields?: Record<string, string>;
   /** true cuando ya completó el onboarding. */

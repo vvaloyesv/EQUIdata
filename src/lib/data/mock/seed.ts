@@ -93,6 +93,8 @@ export const studentProfiles: StudentProfile[] = [
     apellidos: "Mendoza",
     cargo: "Gestoras/Gestores",
     area: "Investigación",
+    documentType: "CC",
+    documentNumber: "1020304050",
     completed: true,
   },
 ];

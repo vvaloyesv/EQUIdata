@@ -51,10 +51,13 @@ export function Input({
   );
 }
 
+type SelectOption = string | { value: string; label: string };
+
 interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
   label?: string;
   error?: string;
-  options: readonly string[];
+  /** Cadena simple: mismo texto como value y como texto visible. Objeto: value distinto de la etiqueta (p. ej. un código con su descripción). */
+  options: readonly SelectOption[];
   placeholder?: string;
   icon?: LucideIcon;
 }
@@ -93,7 +96,9 @@ export function Select({
               : "border-[var(--color-divider)]",
             className,
           )}
-          defaultValue=""
+          {...(rest.value === undefined && rest.defaultValue === undefined
+            ? { defaultValue: "" }
+            : {})}
           {...rest}
         >
           {placeholder && (
@@ -101,11 +106,15 @@ export function Select({
               {placeholder}
             </option>
           )}
-          {options.map((o) => (
-            <option key={o} value={o}>
-              {o}
-            </option>
-          ))}
+          {options.map((o) => {
+            const value = typeof o === "string" ? o : o.value;
+            const text = typeof o === "string" ? o : o.label;
+            return (
+              <option key={value} value={value}>
+                {text}
+              </option>
+            );
+          })}
         </select>
         <svg
           width="12"

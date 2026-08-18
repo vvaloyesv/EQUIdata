@@ -130,6 +130,16 @@ export class MockRepository implements Repository {
   async listUsersByRole(role: User["role"]) {
     return clone(this.users.filter((u) => u.role === role));
   }
+  async updateDisplayName(userId: string, displayName: string) {
+    const i = this.users.findIndex((u) => u.id === userId);
+    if (i < 0) fail(`Usuario no encontrado: ${userId}`);
+    this.users[i] = { ...this.users[i], displayName };
+  }
+  async updateAvatarUrl(userId: string, avatarUrl: string) {
+    const i = this.users.findIndex((u) => u.id === userId);
+    if (i < 0) fail(`Usuario no encontrado: ${userId}`);
+    this.users[i] = { ...this.users[i], avatarUrl };
+  }
   async getStudentProfile(userId: string) {
     return clone(this.profiles.find((p) => p.userId === userId) ?? null);
   }

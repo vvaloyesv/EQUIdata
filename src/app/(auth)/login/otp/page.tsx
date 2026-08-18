@@ -48,7 +48,11 @@ function OtpForm() {
       router.push("/teacher/dashboard");
       return;
     }
-    router.push(isRegister ? "/onboarding" : "/dashboard");
+    // Registro y login llegan siempre al dashboard — si el perfil quedó
+    // incompleto (recién registrado, o una cuenta vieja sin documento), el
+    // layout del estudiante se encarga de mostrar el modal de completar
+    // datos encima (ver ProfileCompletionModal).
+    router.push("/dashboard");
   }
 
   async function confirmCode() {
@@ -76,7 +80,7 @@ function OtpForm() {
     }
 
     await loginAs("u-student");
-    router.push(isRegister ? "/onboarding" : "/dashboard");
+    router.push("/dashboard");
   }
 
   async function resendCode() {

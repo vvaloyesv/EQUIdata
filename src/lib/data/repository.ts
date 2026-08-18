@@ -40,6 +40,10 @@ export interface Repository {
   getCurrentUser(): Promise<User | null>;
   getUserById(id: string): Promise<User | null>;
   listUsersByRole(role: User["role"]): Promise<User[]>;
+  /** Al completar el onboarding, sincroniza el nombre real (nombres + apellidos) — sin esto, User.displayName se queda pegado al valor con el que se creó la cuenta. */
+  updateDisplayName(userId: string, displayName: string): Promise<void>;
+  /** Foto de perfil — la URL ya apunta a un archivo subido y comprimido (Supabase Storage en modo real). */
+  updateAvatarUrl(userId: string, avatarUrl: string): Promise<void>;
   getStudentProfile(userId: string): Promise<StudentProfile | null>;
   saveStudentProfile(profile: StudentProfile): Promise<StudentProfile>;
   /** Todos los perfiles de estudiante (panel del profesor: lista de estudiantes). */

@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -26,6 +27,9 @@ export function SidebarNav({
   profileName,
   profileSubtitle,
   streakDays,
+  avatarUrl,
+  onAvatarChange,
+  avatarUploading,
 }: {
   items: NavItem[];
   profileName: string;
@@ -33,8 +37,13 @@ export function SidebarNav({
   /** Racha real de días consecutivos con actividad. Sin este prop (p. ej. profesor) no se muestra el badge. */
   streakDays?: number;
   brand?: React.ReactNode;
+  avatarUrl?: string;
+  /** Si se provee, el botón lápiz queda activo y dispara un selector de archivo. */
+  onAvatarChange?: (file: File) => void;
+  avatarUploading?: boolean;
 }) {
   const pathname = usePathname();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   return (
     <aside className="flex h-dvh w-72 shrink-0 flex-col bg-[var(--color-navy)] text-white">
@@ -43,16 +52,34 @@ export function SidebarNav({
         <div className="relative mx-auto w-fit">
           <Avatar
             name={profileName}
+            avatarUrl={avatarUrl}
             size={72}
             className="bg-[var(--color-lavender-tint)] ring-2 ring-[var(--color-lime)]"
           />
-          <button
-            type="button"
-            aria-label="Editar perfil"
-            className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full bg-[var(--color-coral)] text-white shadow-[0_8px_18px_-10px_rgba(0,0,0,0.8)] transition-transform hover:scale-105"
-          >
-            <Edit3 size={14} />
-          </button>
+          {onAvatarChange && (
+            <>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) onAvatarChange(file);
+                  e.target.value = "";
+                }}
+              />
+              <button
+                type="button"
+                aria-label="Editar perfil"
+                disabled={avatarUploading}
+                onClick={() => fileInputRef.current?.click()}
+                className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full bg-[var(--color-coral)] text-white shadow-[0_8px_18px_-10px_rgba(0,0,0,0.8)] transition-transform hover:scale-105 disabled:opacity-60"
+              >
+                <Edit3 size={14} />
+              </button>
+            </>
+          )}
         </div>
 
         <div className="mt-4 min-w-0">
