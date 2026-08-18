@@ -1,0 +1,189 @@
+@import "tailwindcss";
+
+/* ============================================================
+   EQUIdata — Tokens de marca
+   Fuente de verdad: marca-elearning.md
+   Color por rol (no cinco iguales). Ratio de uso 60/30/10.
+   ============================================================ */
+@theme {
+  /* Navy — ancla: texto, títulos, nav, CTA sólido */
+  --color-navy: #192962;
+  --color-navy-hover: #0f1c4d;
+  --color-navy-tint: #ebeef7;
+
+  /* Lavanda — links, secundarios, tags. Nunca CTA ni texto */
+  --color-lavender: #bea4e8;
+  --color-lavender-tint: #f1ebfa;
+  --color-lavender-text: #534ab7;
+
+  /* Lima — acento: progreso, completado, activo. Nunca botón */
+  --color-lime: #bbef7f;
+  --color-lime-tint: #f1fadf;
+  --color-lime-text: #173404;
+
+  /* Coral — un acento hero por pantalla, alertas/error */
+  --color-coral: #d55947;
+  --color-coral-hover: #c24634;
+  --color-coral-tint: #fbeae6;
+
+  /* Warning (ámbar) — no está en paleta base, se necesita */
+  --color-warning: #e8a93b;
+
+  /* Neutros — lienzo y rampa de apoyo */
+  --color-canvas: #fafafa;
+  --color-surface: #ffffff;
+  --color-ink: #192962; /* texto principal = navy */
+  --color-muted: #5b5e6e; /* texto secundario */
+  --color-hint: #9a9dab; /* hint / placeholder */
+  --color-divider: #edeef2; /* divisor / pista de progreso */
+
+  /* Radios */
+  --radius-token: 12px; /* componentes */
+  --radius-card: 16px; /* tarjetas */
+  --radius-pill: 999px; /* botones / badges */
+
+  /* Tipografía (las familias las inyecta next/font vía variables) */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-space-grotesk), var(--font-inter), sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
+}
+
+/* Base */
+html,
+body {
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Firma anti-genérico: etiquetas / microcopy en mono MAYÚSCULA */
+.label-mono {
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 0.6875rem; /* 11px */
+  color: var(--color-muted);
+  font-weight: 400;
+}
+
+/* Títulos con Space Grotesk peso 500 */
+.font-display {
+  font-family: var(--font-display);
+  font-weight: 500;
+}
+
+/* Números tabulares para métricas */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Anillo de foco de inputs (navy/lavanda) */
+.focus-ring:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--color-lavender);
+}
+
+/* Loader de marca -------------------------------------------------------- */
+.brand-loader-mark::before {
+  position: absolute;
+  inset: 4px;
+  content: "";
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 28% 24%, rgba(190, 164, 232, 0.38), transparent 42%),
+    radial-gradient(circle at 72% 70%, rgba(187, 239, 127, 0.36), transparent 46%),
+    radial-gradient(circle at 78% 26%, rgba(213, 89, 71, 0.20), transparent 36%);
+  filter: blur(1px);
+  animation: equidata-loader-glow 2.4s ease-in-out infinite;
+}
+
+.brand-loader-logo {
+  position: relative;
+  z-index: 2;
+  transform-origin: center;
+  animation:
+    equidata-loader-frame-spin 5.6s linear infinite,
+    equidata-loader-breathe 1.9s ease-in-out infinite;
+}
+
+.brand-loader-orbit {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  border-radius: 999px;
+  animation: equidata-loader-spin 2.8s linear infinite;
+}
+
+.brand-loader-orbit::after {
+  position: absolute;
+  content: "";
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.brand-loader-orbit-a::after {
+  background: var(--color-lavender);
+}
+
+.brand-loader-orbit-b {
+  animation-delay: -0.9s;
+}
+
+.brand-loader-orbit-b::after {
+  background: var(--color-lime);
+}
+
+.brand-loader-orbit-c {
+  animation-delay: -1.8s;
+}
+
+.brand-loader-orbit-c::after {
+  background: var(--color-coral);
+}
+
+@keyframes equidata-loader-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes equidata-loader-frame-spin {
+  to {
+    rotate: 360deg;
+  }
+}
+
+@keyframes equidata-loader-breathe {
+  0%,
+  100% {
+    scale: 0.98;
+  }
+  50% {
+    scale: 1.04;
+  }
+}
+
+@keyframes equidata-loader-glow {
+  0%,
+  100% {
+    opacity: 0.75;
+    transform: scale(0.94);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brand-loader-mark::before,
+  .brand-loader-logo,
+  .brand-loader-orbit {
+    animation: none;
+  }
+}
