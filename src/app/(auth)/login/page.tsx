@@ -72,13 +72,16 @@ export default function LoginPage() {
         return;
       }
 
+      // Si intenta "iniciar sesión" con un correo sin cuenta, seguimos de una
+      // vez como registro (sin pedirle un clic extra) — solo cambia de
+      // pestaña visualmente y sigue el flujo de alta.
+      let effectiveMode = mode;
       if (mode === "login" && !exists) {
-        setSending(false);
-        setError("Este correo no tiene una cuenta registrada. Regístrate para continuar.");
-        setSuggestedMode("register");
-        return;
+        effectiveMode = "register";
+        setMode("register");
       }
-      if (mode === "register" && exists) {
+
+      if (effectiveMode === "register" && exists) {
         setSending(false);
         setError("Ya tienes una cuenta con este correo.");
         setSuggestedMode("login");
@@ -91,14 +94,14 @@ export default function LoginPage() {
         // Refuerzo del lado de Supabase, por si algo más llega a llamar
         // signInWithOtp saltándose el chequeo de arriba: en "login" nunca
         // debe crear una cuenta nueva.
-        options: { shouldCreateUser: mode === "register" },
+        options: { shouldCreateUser: effectiveMode === "register" },
       });
       setSending(false);
       if (otpError) {
         setError(otpError.message);
         return;
       }
-      router.push(`/login/otp?email=${encodeURIComponent(email)}&mode=${mode}`);
+      router.push(`/login/otp?email=${encodeURIComponent(email)}&mode=${effectiveMode}`);
       return;
     }
 
