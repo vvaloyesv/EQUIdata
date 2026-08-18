@@ -32,3 +32,15 @@ next-env.d.ts
 
 # Configuración local de Claude Code
 .claude/settings.local.json
+
+# Configuración local de Claude Code
+.claude/
+
+# Documentación y contexto local
+CLAUDE.md
+contexto.md
+140826-planspec.md
+260813_desing-spec.md
+
+# Prototipos
+prototipo/
