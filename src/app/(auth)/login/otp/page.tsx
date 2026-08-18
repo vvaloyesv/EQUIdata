@@ -12,9 +12,6 @@ import { isTeacherEmail } from "@/lib/auth/teacherEmail";
 import { isSupabaseMode } from "@/lib/data/dataSource";
 import { createClient } from "@/lib/supabase/client";
 
-/** Código de prueba para la demo (auth simulada, solo modo mock). */
-const DEMO_CODE = "482913";
-
 function OtpForm() {
   const router = useRouter();
   const params = useSearchParams();
@@ -85,7 +82,12 @@ function OtpForm() {
   async function resendCode() {
     if (!supabaseMode) return;
     const supabase = createClient();
-    const { error: resendError } = await supabase.auth.signInWithOtp({ email });
+    const { error: resendError } = await supabase.auth.signInWithOtp({
+      email,
+      // Mismo refuerzo que el envío inicial (login/page.tsx): en modo
+      // "login" nunca debe crear una cuenta nueva, ni siquiera vía reenvío.
+      options: { shouldCreateUser: mode === "register" },
+    });
     if (resendError) {
       setError(resendError.message);
       return;
@@ -156,12 +158,6 @@ function OtpForm() {
           </button>
         )}
       </p>
-
-      {!supabaseMode && (
-        <p className="mt-5 rounded-[var(--radius-token)] bg-[var(--color-lime-tint)] px-3 py-2 text-center text-xs text-[var(--color-lime-text)]">
-          Demo: usa el código {DEMO_CODE} (o cualquier código de 6 dígitos).
-        </p>
-      )}
     </AuthShell>
   );
 }

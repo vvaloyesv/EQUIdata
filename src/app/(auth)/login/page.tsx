@@ -74,7 +74,7 @@ export default function LoginPage() {
 
       if (mode === "login" && !exists) {
         setSending(false);
-        setError("No encontramos una cuenta con este correo.");
+        setError("Este correo no tiene una cuenta registrada. Regístrate para continuar.");
         setSuggestedMode("register");
         return;
       }
