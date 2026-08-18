@@ -102,10 +102,16 @@ function useMockAuth(): AuthValue {
 function useSupabaseAuth(): AuthValue {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const supabase = useMemo(() => createClient(), []);
+  // Perezoso y condicionado al modo: `AuthProvider` llama este hook siempre
+  // (reglas de hooks), incluso en modo mock o durante el prerender de
+  // `next build` — construir el cliente ahí sin este guard revienta el build
+  // en cuanto faltan `NEXT_PUBLIC_SUPABASE_URL`/`ANON_KEY` (p. ej. en Vercel
+  // sin esas env vars configuradas), aunque la app esté en modo mock.
+  const supabase = useMemo(() => (isSupabaseMode() ? createClient() : null), []);
 
   const loadProfile = useCallback(
     async (userId: string) => {
+      if (!supabase) return;
       const { data, error } = await supabase
         .from("profiles")
         .select("id, email, role, display_name, avatar_url, last_seen")
@@ -124,7 +130,7 @@ function useSupabaseAuth(): AuthValue {
     // Ambos hooks (mock/Supabase) se llaman siempre para respetar las reglas
     // de hooks — este solo hace trabajo real (llamadas de red) cuando el
     // modo activo es Supabase.
-    if (!isSupabaseMode()) {
+    if (!supabase) {
       setLoading(false);
       return;
     }
@@ -163,7 +169,7 @@ function useSupabaseAuth(): AuthValue {
   }, []);
 
   const logout = useCallback(() => {
-    void supabase.auth.signOut();
+    void supabase?.auth.signOut();
     setUser(null);
   }, [supabase]);
 
