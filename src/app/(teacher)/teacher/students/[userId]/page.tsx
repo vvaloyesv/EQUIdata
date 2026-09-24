@@ -3,7 +3,7 @@
 import { use, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, UserMinus, UserPlus } from "lucide-react";
-import { useAsync } from "@/lib/useAsync";
+import { useRefresh, useRepoQuery } from "@/lib/query";
 import { getRepository } from "@/lib/data";
 import { buildStudentDetail } from "@/lib/teacher/students";
 import { Card } from "@/components/ui/Card";
@@ -19,12 +19,11 @@ export default function StudentDetailPage({
   params: Promise<{ userId: string }>;
 }) {
   const { userId } = use(params);
-  const [reloadKey, setReloadKey] = useState(0);
+  const refresh = useRefresh();
   const [busyCourseId, setBusyCourseId] = useState<string | null>(null);
 
-  const { data: vm, loading } = useAsync(
-    () => buildStudentDetail(getRepository(), userId),
-    [userId, reloadKey],
+  const { data: vm, loading } = useRepoQuery(["student-detail", userId], () =>
+    buildStudentDetail(getRepository(), userId),
   );
 
   async function toggleEnrollment(courseId: string, enrolled: boolean) {
@@ -39,8 +38,8 @@ export default function StudentDetailPage({
         enrolledAt: new Date().toISOString(),
       });
     }
+    await refresh();
     setBusyCourseId(null);
-    setReloadKey((k) => k + 1);
   }
 
   if (loading || !vm) {

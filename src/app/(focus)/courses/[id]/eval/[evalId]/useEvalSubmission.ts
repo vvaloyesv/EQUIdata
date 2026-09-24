@@ -117,27 +117,34 @@ export function useEvalSubmission(
     });
 
     const nowIso = new Date().toISOString();
-    await repo.createAttempt({
-      id: attemptId,
-      userId: user.id,
-      evaluationId: evaluation.id,
-      startedAt: nowIso,
-      submittedAt: nowIso,
-      score: graded.score,
-      status: "submitted",
-    });
-    await repo.saveAnswers(graded.gradedAnswers);
-    await repo.saveOutcomeScores(graded.outcomeScores);
+    // Intento + respuestas + resultados por RA, todo o nada (M10 · F3/F4).
+    await repo.submitAttempt(
+      {
+        id: attemptId,
+        userId: user.id,
+        evaluationId: evaluation.id,
+        startedAt: nowIso,
+        submittedAt: nowIso,
+        score: graded.score,
+        status: "submitted",
+      },
+      graded.gradedAnswers,
+      graded.outcomeScores,
+    );
 
     let baseline: Record<string, number> | undefined;
     let certificateEligible: boolean | undefined;
     let certificateReason: string | undefined;
 
     if (evaluation.kind === "diagnostic_final") {
-      baseline = await getBaselineByOutcomeCode(repo, user.id, courseId);
-      const priorAttempts = await repo.listAttempts(user.id, evaluation.id);
+      const [baselineByCode, priorAttempts, completion] = await Promise.all([
+        getBaselineByOutcomeCode(repo, user.id, courseId),
+        repo.listAttempts(user.id, evaluation.id),
+        getCourseCompletion(repo, user.id, courseId),
+      ]);
+      baseline = baselineByCode;
       const best = Math.max(graded.score, bestScore(priorAttempts) ?? 0);
-      const { total, completed } = await getCourseCompletion(repo, user.id, courseId);
+      const { total, completed } = completion;
       const elig = isCertificateEligible({
         finalBestScore: best,
         finalPassingScore: evaluation.passingScore ?? 100,

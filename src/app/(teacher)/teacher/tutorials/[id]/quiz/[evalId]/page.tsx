@@ -3,7 +3,7 @@
 import { use, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, ClipboardCheck, FileCode2 } from "lucide-react";
-import { useAsync } from "@/lib/useAsync";
+import { useRefresh, useRepoQuery } from "@/lib/query";
 import { getRepository } from "@/lib/data";
 import { buildTeacherTutorialQuizView } from "@/lib/teacher/tutorials";
 import { genId } from "@/lib/teacher/course";
@@ -28,12 +28,12 @@ export default function TeacherTutorialQuizPage({
   params: Promise<{ id: string; evalId: string }>;
 }) {
   const { evalId } = use(params);
-  const [reloadKey, setReloadKey] = useState(0);
+  const refresh = useRefresh();
+  const reload = () => void refresh();
   const [addingQuestion, setAddingQuestion] = useState(false);
 
-  const { data: vm, loading } = useAsync(
-    () => buildTeacherTutorialQuizView(getRepository(), evalId),
-    [evalId, reloadKey],
+  const { data: vm, loading } = useRepoQuery(["teacher-tutorial-quiz", evalId], () =>
+    buildTeacherTutorialQuizView(getRepository(), evalId),
   );
 
   if (loading || !vm) {
@@ -56,7 +56,7 @@ export default function TeacherTutorialQuizPage({
       maxAttempts: Number(form.get("maxAttempts") ?? evaluation.maxAttempts),
       passingScore: Number(form.get("passingScore") ?? evaluation.passingScore ?? 80),
     });
-    setReloadKey((k) => k + 1);
+    reload();
   }
 
   async function addQuestion(data: QuestionSubmitData) {
@@ -83,7 +83,7 @@ export default function TeacherTutorialQuizPage({
       });
     }
     setAddingQuestion(false);
-    setReloadKey((k) => k + 1);
+    reload();
   }
 
   return (

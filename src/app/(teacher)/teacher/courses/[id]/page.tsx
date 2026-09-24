@@ -1,9 +1,9 @@
 "use client";
 
-import { use, useState } from "react";
+import { use } from "react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { useAsync } from "@/lib/useAsync";
+import { useRefresh, useRepoQuery } from "@/lib/query";
 import { getRepository } from "@/lib/data";
 import { buildTeacherCourseView } from "@/lib/teacher/course";
 import { Badge } from "@/components/ui/Badge";
@@ -20,12 +20,11 @@ export default function TeacherCoursePage({
   params: Promise<{ id: string }>;
 }) {
   const { id: courseId } = use(params);
-  const [reloadKey, setReloadKey] = useState(0);
-  const refresh = () => setReloadKey((k) => k + 1);
+  const invalidate = useRefresh();
+  const refresh = () => void invalidate();
 
-  const { data: vm, loading } = useAsync(
-    () => buildTeacherCourseView(getRepository(), courseId),
-    [courseId, reloadKey],
+  const { data: vm, loading } = useRepoQuery(["teacher-course", courseId], () =>
+    buildTeacherCourseView(getRepository(), courseId),
   );
 
   const actions = useTeacherCourseActions(courseId, vm, refresh);

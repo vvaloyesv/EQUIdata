@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
-import { useAsync } from "@/lib/useAsync";
+import { queryKeys, useRefresh, useRepoQuery } from "@/lib/query";
 import { getRepository } from "@/lib/data";
 import { buildDashboard } from "@/lib/student/dashboard";
 import { listAvailableCourses } from "@/lib/student/course";
@@ -15,20 +15,22 @@ import { ProgressBar } from "@/components/ui/Progress";
 
 export default function CoursesListPage() {
   const { user } = useAuth();
-  const [reloadKey, setReloadKey] = useState(0);
+  const refresh = useRefresh();
   const [enrollingId, setEnrollingId] = useState<string | null>(null);
+  const userId = user?.id ?? "";
 
-  const { data, loading } = useAsync(
+  // Misma lectura que el dashboard (misma clave): si ya se abrió, aparece al instante.
+  const { data, loading } = useRepoQuery(
+    queryKeys.dashboard(userId),
     () =>
-      user
-        ? buildDashboard(getRepository(), user.id, user.displayName, new Date().toISOString())
-        : Promise.resolve(null),
-    [user?.id, reloadKey],
+      buildDashboard(getRepository(), userId, user?.displayName ?? "", new Date().toISOString()),
+    { enabled: !!user },
   );
 
-  const { data: available } = useAsync(
-    () => (user ? listAvailableCourses(getRepository(), user.id) : Promise.resolve(null)),
-    [user?.id, reloadKey],
+  const { data: available } = useRepoQuery(
+    ["available-courses", userId],
+    () => listAvailableCourses(getRepository(), userId),
+    { enabled: !!user },
   );
 
   async function enroll(courseId: string) {
@@ -39,8 +41,8 @@ export default function CoursesListPage() {
       courseId,
       enrolledAt: new Date().toISOString(),
     });
+    await refresh();
     setEnrollingId(null);
-    setReloadKey((k) => k + 1);
   }
 
   if (loading || !data) {

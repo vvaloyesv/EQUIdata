@@ -1,59 +1,25 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight } from "lucide-react";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { OtpInput } from "@/components/ui/OtpInput";
 import { Button } from "@/components/ui/Button";
-import { Badge } from "@/components/ui/Badge";
-import { useAuth } from "@/context/AuthContext";
-import { isTeacherEmail } from "@/lib/auth/teacherEmail";
-import { isSupabaseMode } from "@/lib/data/dataSource";
 import { createClient } from "@/lib/supabase/client";
+import { authErrorMessage } from "@/lib/auth/authErrors";
+import { claimsFromAccessToken, homeForRole, resolveRole } from "@/lib/auth/role";
 
 function OtpForm() {
   const router = useRouter();
   const params = useSearchParams();
-  const { loginAs } = useAuth();
-  const email = params.get("email") ?? "tu correo";
-  const mode = params.get("mode") === "register" ? "register" : "login";
-  const isRegister = mode === "register";
+  const email = params.get("email") ?? "";
   const [code, setCode] = useState("");
   const [error, setError] = useState<string>();
   const [submitting, setSubmitting] = useState(false);
   const [resent, setResent] = useState(false);
-  const supabaseMode = isSupabaseMode();
-
-  async function confirmCodeSupabase() {
-    const supabase = createClient();
-    const { data, error: verifyError } = await supabase.auth.verifyOtp({
-      email,
-      token: code,
-      type: "email",
-    });
-    if (verifyError || !data.user) {
-      setError(verifyError?.message ?? "Código inválido o vencido");
-      setSubmitting(false);
-      return;
-    }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", data.user.id)
-      .single();
-
-    if (profile?.role === "teacher") {
-      router.push("/teacher/dashboard");
-      return;
-    }
-    // Registro y login llegan siempre al dashboard — si el perfil quedó
-    // incompleto (recién registrado, o una cuenta vieja sin documento), el
-    // layout del estudiante se encarga de mostrar el modal de completar
-    // datos encima (ver ProfileCompletionModal).
-    router.push("/dashboard");
-  }
+  /** Último código enviado solo al completar los 6 dígitos — evita reenviarlo en bucle si Supabase lo rechaza. */
+  const autoSubmittedCode = useRef<string | null>(null);
 
   async function confirmCode() {
     if (submitting) return;
@@ -64,36 +30,35 @@ function OtpForm() {
     setSubmitting(true);
     setError(undefined);
 
-    if (supabaseMode) {
-      await confirmCodeSupabase();
+    const supabase = createClient();
+    const { data, error: verifyError } = await supabase.auth.verifyOtp({
+      email,
+      token: code,
+      type: "email",
+    });
+    if (verifyError || !data.user) {
+      setError(authErrorMessage(verifyError));
+      setSubmitting(false);
       return;
     }
 
-    // En la demo (mock) aceptamos cualquier código de 6 dígitos. El correo
-    // determina el rol (spec: el profesor es una cuenta específica, no un
-    // conmutador manual). Cualquier otro correo entra a la cuenta de
-    // estudiante de la demo.
-    if (isTeacherEmail(email)) {
-      await loginAs("u-teacher");
-      router.push("/teacher/dashboard");
-      return;
-    }
-
-    await loginAs("u-student");
-    router.push("/dashboard");
+    // Cuenta nueva o perfil incompleto: el layout del estudiante muestra el
+    // formulario de perfil encima del dashboard (ProfileCompletionModal).
+    const role = await resolveRole(
+      supabase,
+      data.user.id,
+      claimsFromAccessToken(data.session?.access_token),
+    );
+    router.replace(homeForRole(role));
   }
 
   async function resendCode() {
-    if (!supabaseMode) return;
-    const supabase = createClient();
-    const { error: resendError } = await supabase.auth.signInWithOtp({
+    const { error: resendError } = await createClient().auth.signInWithOtp({
       email,
-      // Mismo refuerzo que el envío inicial (login/page.tsx): en modo
-      // "login" nunca debe crear una cuenta nueva, ni siquiera vía reenvío.
-      options: { shouldCreateUser: mode === "register" },
+      options: { shouldCreateUser: true },
     });
     if (resendError) {
-      setError(resendError.message);
+      setError(authErrorMessage(resendError));
       return;
     }
     setResent(true);
@@ -105,62 +70,47 @@ function OtpForm() {
     void confirmCode();
   }
 
+  // Envío automático al completar los 6 dígitos, una sola vez por código:
+  // si Supabase lo rechaza, no se reintenta hasta que la persona lo edite o
+  // pulse "Confirmar código".
   useEffect(() => {
-    if (code.length === 6 && !submitting) {
+    if (code.length === 6 && autoSubmittedCode.current !== code) {
+      autoSubmittedCode.current = code;
       void confirmCode();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [code, submitting]);
+  }, [code]);
 
   return (
     <AuthShell
       step={1}
-      title={isRegister ? "Confirma tu correo" : "Confirma que eres tú"}
-      subtitle={
-        isRegister
-          ? "Escribe el código para crear tu cuenta y completar tu perfil."
-          : "Escribe el código de 6 dígitos para entrar a tu cuenta."
-      }
-      hideStepper={!isRegister}
+      title="Confirma que eres tú"
+      subtitle="Escribe el código de 6 dígitos que te enviamos por correo."
+      hideStepper
     >
-      {isRegister && (
-        <Badge tone="coral" className="mb-3">
-          Paso 1 de 3
-        </Badge>
-      )}
-      <h2 className="font-display text-2xl text-[var(--color-navy)]">
-        Revisa tu correo
-      </h2>
+      <h2 className="font-display text-2xl text-[var(--color-navy)]">Revisa tu correo</h2>
       <p className="mt-1.5 text-sm text-[var(--color-muted)]">
         Enviamos un código de 6 dígitos a{" "}
-        <span className="font-medium text-[var(--color-navy)]">{email}</span>
+        <span className="font-medium text-[var(--color-navy)]">{email || "tu correo"}</span>
       </p>
 
       <form onSubmit={submit} className="mt-6 space-y-5">
         <OtpInput value={code} onChange={setCode} />
-        {error && (
-          <p className="text-xs text-[var(--color-coral)]">{error}</p>
-        )}
+        {error && <p className="text-xs text-[var(--color-coral)]">{error}</p>}
         <Button type="submit" className="w-full" disabled={submitting}>
           {submitting ? "Confirmando…" : "Confirmar código"} <ArrowRight size={16} />
         </Button>
       </form>
 
       <p className="mt-5 text-center text-sm text-[var(--color-muted)]">
-        ¿No llegó el código?{" "}
-        {supabaseMode ? (
-          <button
-            type="button"
-            onClick={() => void resendCode()}
-            className="text-[var(--color-lavender-text)] hover:underline"
-          >
-            {resent ? "Código reenviado" : "Reenviar código"}
-          </button>
-        ) : (
-          <button className="text-[var(--color-lavender-text)] hover:underline">
-            Reenviar código
-          </button>
-        )}
+        ¿No llegó el código? Revisa la carpeta de spam o{" "}
+        <button
+          type="button"
+          onClick={() => void resendCode()}
+          className="text-[var(--color-lavender-text)] hover:underline"
+        >
+          {resent ? "código reenviado" : "pide uno nuevo"}
+        </button>
       </p>
     </AuthShell>
   );

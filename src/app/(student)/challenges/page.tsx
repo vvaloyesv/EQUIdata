@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Target } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { useAsync } from "@/lib/useAsync";
+import { queryKeys, useRepoQuery } from "@/lib/query";
 import { getRepository } from "@/lib/data";
 import { buildChallengesView } from "@/lib/student/challenges";
 import { Card } from "@/components/ui/Card";
@@ -19,12 +19,11 @@ const DIFFICULTY_TONE = {
 
 export default function ChallengesPage() {
   const { user } = useAuth();
-  const { data: challenges, loading } = useAsync(
-    () =>
-      user
-        ? buildChallengesView(getRepository(), user.id)
-        : Promise.resolve([]),
-    [user?.id],
+  const userId = user?.id ?? "";
+  const { data: challenges, loading } = useRepoQuery(
+    queryKeys.challenges(userId),
+    () => buildChallengesView(getRepository(), userId),
+    { enabled: !!user },
   );
 
   return (

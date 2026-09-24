@@ -4,10 +4,17 @@ import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Award, Sparkles } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
-import { useAsync } from "@/lib/useAsync";
+import { queryKeys, useRefresh, useRepoQuery } from "@/lib/query";
 import { getRepository } from "@/lib/data";
-import { buildCourseView, flatUnlockedModules } from "@/lib/student/course";
+import {
+  buildCourseView,
+  flatUnlockedModules,
+  withModuleCompleted,
+  type CourseVM,
+} from "@/lib/student/course";
+import { moduleContentQuery } from "@/components/student/ModuleViewer";
 import { LockedState } from "@/components/ui/LockedState";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -23,23 +30,28 @@ export default function CoursePage({
   const { id: courseId } = use(params);
   const router = useRouter();
   const { user } = useAuth();
-  const [reloadKey, setReloadKey] = useState(0);
+  const queryClient = useQueryClient();
+  const refresh = useRefresh();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [selectedSessionId, setSelectedSessionId] = useState<string>();
   const [selectedModuleId, setSelectedModuleId] = useState<string>();
+  const userId = user?.id ?? "";
+  const courseKey = queryKeys.courseView(userId, courseId);
 
-  const { data: vm, loading } = useAsync(
-    () =>
-      user
-        ? buildCourseView(
-            getRepository(),
-            user.id,
-            courseId,
-            new Date().toISOString(),
-          )
-        : Promise.resolve(null),
-    [user?.id, courseId, reloadKey],
+  const { data: vm, loading } = useRepoQuery(
+    courseKey,
+    () => buildCourseView(getRepository(), userId, courseId, new Date().toISOString()),
+    { enabled: !!user },
   );
+
+  // Mientras se ve un módulo, se precarga el HTML del siguiente: al pulsar
+  // "Siguiente clase" ya está en caché y aparece sin espera.
+  useEffect(() => {
+    if (!vm || !selectedModuleId) return;
+    const flat = flatUnlockedModules(vm);
+    const next = flat[flat.findIndex((i) => i.module.id === selectedModuleId) + 1]?.module;
+    if (next?.type === "html") void queryClient.prefetchQuery(moduleContentQuery(next.id));
+  }, [vm, selectedModuleId, queryClient]);
 
   // Selecciona la sesión y el módulo por defecto cuando cargan los datos.
   useEffect(() => {
@@ -93,12 +105,20 @@ export default function CoursePage({
   /** Contenido secuencial: al completar, avanza al siguiente módulo, quiz o sesión. */
   async function completeAndAdvance(moduleId: string) {
     if (!user || !vm || !activeSession) return;
-    await getRepository().setModuleProgress({
-      userId: user.id,
-      moduleId,
-      completed: true,
-      completedAt: new Date().toISOString(),
-    });
+    // La pantalla se actualiza al instante sobre la caché; el servidor
+    // confirma en segundo plano. Nada se desmonta: el siguiente video/HTML
+    // aparece sin pasar por el esqueleto de carga.
+    queryClient.setQueryData<CourseVM | null>(courseKey, (prev) =>
+      prev ? withModuleCompleted(prev, moduleId) : prev,
+    );
+    void getRepository()
+      .setModuleProgress({
+        userId: user.id,
+        moduleId,
+        completed: true,
+        completedAt: new Date().toISOString(),
+      })
+      .finally(() => refresh());
 
     const modules = activeSession.modules;
     const idx = modules.findIndex((m) => m.id === moduleId);
@@ -106,7 +126,6 @@ export default function CoursePage({
 
     if (nextInSession) {
       setSelectedModuleId(nextInSession.id);
-      setReloadKey((k) => k + 1);
       return;
     }
 
@@ -127,7 +146,6 @@ export default function CoursePage({
     } else if (!next && vm.finalDiagnosticAvailable && vm.diagnosticFinal) {
       router.push(`/courses/${courseId}/eval/${vm.diagnosticFinal.id}`);
     }
-    setReloadKey((k) => k + 1);
   }
 
   return (

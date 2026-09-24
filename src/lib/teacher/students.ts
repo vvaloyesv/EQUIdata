@@ -2,11 +2,14 @@
  * Ensambla el detalle de un estudiante para el profesor: su perfil y el
  * estado de cada curso (inscrito con % de avance, o no inscrito) — insumo
  * para inscribir/desinscribir desde una sola pantalla.
+ *
+ * M10 · F4: dos tandas de lecturas; la estructura de todos los cursos
+ * inscritos llega en una consulta.
  */
 
 import type { Repository } from "@/lib/data/repository";
 import type { Course, StudentProfile, User } from "@/lib/domain/types";
-import { getCourseCompletion } from "@/lib/student/course";
+import { completedModuleIdsOf, courseCompletion } from "@/lib/student/course";
 
 export interface StudentCourseRow {
   course: Course;
@@ -24,26 +27,32 @@ export async function buildStudentDetail(
   repo: Repository,
   userId: string,
 ): Promise<StudentDetailVM> {
-  const student = await repo.getUserById(userId);
-  if (!student) throw new Error(`Estudiante no encontrado: ${userId}`);
-
-  const [profile, allCourses, enrollments] = await Promise.all([
+  const [student, profile, allCourses, enrollments, progress] = await Promise.all([
+    repo.getUserById(userId),
     repo.getStudentProfile(userId),
     repo.listCourses(),
     repo.listEnrollments(userId),
+    repo.listModuleProgress(userId),
   ]);
-  const enrolledIds = new Set(enrollments.map((e) => e.courseId));
+  if (!student) throw new Error(`Estudiante no encontrado: ${userId}`);
 
-  const courses: StudentCourseRow[] = [];
-  for (const course of allCourses) {
+  const enrolledIds = new Set(enrollments.map((e) => e.courseId));
+  const structures = await repo.getCourseStructures(
+    allCourses.filter((c) => enrolledIds.has(c.id)).map((c) => c.id),
+  );
+  const structureById = new Map(structures.map((s) => [s.course.id, s]));
+  const completedIds = completedModuleIdsOf(progress);
+
+  const courses: StudentCourseRow[] = allCourses.map((course) => {
     const enrolled = enrolledIds.has(course.id);
+    const structure = structureById.get(course.id);
     let percent = 0;
-    if (enrolled) {
-      const { total, completed } = await getCourseCompletion(repo, userId, course.id);
+    if (enrolled && structure) {
+      const { total, completed } = courseCompletion(structure, completedIds);
       percent = total > 0 ? Math.round((completed / total) * 100) : 0;
     }
-    courses.push({ course, enrolled, percent });
-  }
+    return { course, enrolled, percent };
+  });
 
   return { student, profile, courses };
 }

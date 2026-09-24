@@ -10,10 +10,12 @@ import {
   TrendingUp,
   MessageSquare,
   MessageCircle,
+  Settings,
 } from "lucide-react";
 import { SidebarNav, type NavItem } from "@/components/ui/SidebarNav";
 import { BrandLoader } from "@/components/ui/BrandLoader";
 import { useRequireAuth } from "@/lib/useRequireAuth";
+import { features } from "@/lib/features";
 
 const items: NavItem[] = [
   { href: "/teacher/dashboard", label: "Dashboard", icon: LayoutGrid },
@@ -24,7 +26,11 @@ const items: NavItem[] = [
   { href: "/teacher/grades", label: "Calificaciones", icon: ClipboardList },
   { href: "/teacher/progress", label: "Progreso", icon: TrendingUp },
   { href: "/teacher/community", label: "Comunidad", icon: MessageCircle, groupStart: true },
-  { href: "/teacher/messages", label: "Mensajes", icon: MessageSquare },
+  // Oculto en el piloto salvo NEXT_PUBLIC_SHOW_MESSAGES=true (src/lib/features.ts).
+  ...(features.messages
+    ? [{ href: "/teacher/messages", label: "Mensajes", icon: MessageSquare }]
+    : []),
+  { href: "/teacher/settings", label: "Configuración", icon: Settings, groupStart: true },
 ];
 
 export default function TeacherLayout({

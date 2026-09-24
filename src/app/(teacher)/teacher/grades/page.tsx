@@ -2,10 +2,9 @@
 
 import { useState } from "react";
 import { Download, RotateCcw } from "lucide-react";
-import { useAsync } from "@/lib/useAsync";
+import { queryKeys, useRefresh, useRepoQuery } from "@/lib/query";
 import { getRepository } from "@/lib/data";
 import { buildGradesView } from "@/lib/teacher/grades";
-import { gradesToCsv, type GradeRow } from "@/lib/logic/grades-csv";
 import { Card } from "@/components/ui/Card";
 import { Label } from "@/components/ui/Label";
 import { Badge } from "@/components/ui/Badge";
@@ -20,49 +19,65 @@ const KIND_LABEL: Record<string, string> = {
 };
 
 export default function TeacherGradesPage() {
-  const { data: courses } = useAsync(() => getRepository().listCourses(), []);
+  const refresh = useRefresh();
+  const { data: courses } = useRepoQuery(queryKeys.courses(), () => getRepository().listCourses());
   const [courseId, setCourseId] = useState<string>();
   const activeCourseId = courseId ?? courses?.[0]?.id;
 
-  const { data: evaluations } = useAsync(
-    () => (activeCourseId ? getRepository().listEvaluations(activeCourseId) : Promise.resolve([])),
-    [activeCourseId],
+  const { data: evaluations } = useRepoQuery(
+    ["evaluations", activeCourseId ?? ""],
+    () => getRepository().listEvaluations(activeCourseId!),
+    { enabled: !!activeCourseId },
   );
   const [evalId, setEvalId] = useState<string>();
-  const activeEvalId = evalId ?? evaluations?.[0]?.id;
+  // Solo vale una evaluación del curso elegido (evita pedir la de otro curso al cambiar).
+  const activeEvalId =
+    evaluations?.find((e) => e.id === evalId)?.id ?? evaluations?.[0]?.id;
 
-  const [reloadKey, setReloadKey] = useState(0);
-  const { data: vm, loading } = useAsync(async () => {
-    if (!activeCourseId || !activeEvalId) return null;
-    return buildGradesView(getRepository(), activeCourseId, activeEvalId, new Date().toISOString());
-  }, [activeCourseId, activeEvalId, reloadKey]);
+  const { data: vm, loading } = useRepoQuery(
+    ["grades", activeCourseId ?? "", activeEvalId ?? ""],
+    () =>
+      buildGradesView(getRepository(), activeCourseId!, activeEvalId!, new Date().toISOString()),
+    { enabled: !!activeCourseId && !!activeEvalId },
+  );
 
   async function reopen(userId: string) {
     if (!activeEvalId) return;
     await getRepository().grantBonusAttempt(userId, activeEvalId);
-    setReloadKey((k) => k + 1);
+    await refresh();
   }
 
-  function exportCsv() {
-    if (!vm) return;
-    const outcomeCodes = vm.outcomes.map((o) => o.code);
-    const rows: GradeRow[] = vm.rows.map((r) => ({
-      studentName: r.student.displayName,
-      email: r.student.email,
-      evaluationTitle: vm.evaluation.title,
-      score: r.bestScore ?? null,
-      outcomeAchieved: r.outcomeAchieved,
-      outcomeExpected: Object.fromEntries(vm.outcomes.map((o) => [o.code, o.expectedLevel])),
-      questionAnswers: r.questionAnswers,
-    }));
-    const csv = gradesToCsv(rows, outcomeCodes, vm.questionLabels);
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${vm.evaluation.title.replace(/\s+/g, "_")}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string>();
+
+  /** El CSV lo arma el servidor (con su propio control de permisos); aquí solo se descarga. */
+  async function exportCsv() {
+    if (!activeCourseId || !activeEvalId) return;
+    setExporting(true);
+    setExportError(undefined);
+    try {
+      const res = await fetch(
+        `/api/teacher/grades/export?courseId=${encodeURIComponent(activeCourseId)}&evaluationId=${encodeURIComponent(activeEvalId)}`,
+      );
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setExportError(body.error ?? "No se pudo exportar. Intenta de nuevo.");
+        return;
+      }
+      const filename =
+        /filename\*=UTF-8''([^;]+)/.exec(res.headers.get("Content-Disposition") ?? "")?.[1] ??
+        "calificaciones.csv";
+      const url = URL.createObjectURL(await res.blob());
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = decodeURIComponent(filename);
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      setExportError("No hay conexión con el servidor. Revisa tu internet e intenta de nuevo.");
+    } finally {
+      setExporting(false);
+    }
   }
 
   if (!courses) {
@@ -130,10 +145,18 @@ export default function TeacherGradesPage() {
             <Label>
               {vm.rows.length} estudiante{vm.rows.length !== 1 && "s"}
             </Label>
-            <Button variant="secondary" className="!px-3.5 !py-1.5 text-xs" onClick={exportCsv}>
-              <Download size={13} /> Exportar CSV
+            <Button
+              variant="secondary"
+              className="!px-3.5 !py-1.5 text-xs"
+              onClick={() => void exportCsv()}
+              disabled={exporting}
+            >
+              <Download size={13} /> {exporting ? "Generando…" : "Exportar CSV"}
             </Button>
           </div>
+          {exportError && (
+            <p className="mt-2 text-right text-xs text-[var(--color-coral)]">{exportError}</p>
+          )}
 
           <Card bordered className="mt-3 overflow-x-auto !p-0">
             {vm.rows.length === 0 ? (

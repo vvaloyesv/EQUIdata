@@ -8,8 +8,8 @@
  */
 
 import type { Repository } from "@/lib/data/repository";
-import type { Certificate } from "@/lib/domain/types";
-import { buildCourseView } from "./course";
+import type { Certificate, StudentProfile, User } from "@/lib/domain/types";
+import { buildCourseView, courseViewFrom, type CourseVM } from "./course";
 
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // sin O/0/I/1 (ambiguos)
 /** Largo del sufijo: 33^10 ≈ 1.8e15 combinaciones — impráctico de enumerar por fuerza bruta. */
@@ -43,8 +43,21 @@ export async function getOrIssueCertificate(
   const vm = await buildCourseView(repo, userId, courseId, nowIso);
   if (!vm.certificateEligible) return null;
 
-  const profile = await repo.getStudentProfile(userId);
-  const user = await repo.getUserById(userId);
+  const [profile, user] = await Promise.all([
+    repo.getStudentProfile(userId),
+    repo.getUserById(userId),
+  ]);
+  return repo.issueCertificate(certificateSnapshot(vm, userId, profile, user, nowIso));
+}
+
+/** Snapshot del certificado a partir del curso ya armado (no consulta nada). */
+function certificateSnapshot(
+  vm: CourseVM,
+  userId: string,
+  profile: StudentProfile | null,
+  user: User | null,
+  nowIso: string,
+): Certificate {
   const studentName = profile
     ? `${profile.nombres} ${profile.apellidos}`.trim()
     : (user?.displayName ?? "");
@@ -61,33 +74,57 @@ export async function getOrIssueCertificate(
           0,
         );
 
-  return repo.issueCertificate({
+  return {
     code: generateCertificateCode(nowIso),
     userId,
-    courseId,
+    courseId: vm.course.id,
     studentName,
     courseTitle: vm.course.title,
-    courseDescription:
-      vm.course.certificateDescription || vm.course.description,
+    courseDescription: vm.course.certificateDescription || vm.course.description,
     teacherName: vm.course.teacherName,
     durationMin,
     issuedAt: nowIso,
-  });
+  };
 }
 
 /**
  * Emite (si hace falta) los certificados de todos los cursos elegibles del
  * usuario y devuelve la lista completa. Así la pestaña "Certificaciones" está
  * al día aunque la persona nunca haya abierto la página de un certificado.
+ *
+ * M10 · F4: la elegibilidad de todos los cursos pendientes se calcula con una
+ * sola tanda de lecturas (antes, la vista completa de cada curso, en serie).
  */
 export async function syncAndListCertificates(
   repo: Repository,
   userId: string,
   nowIso: string,
 ): Promise<Certificate[]> {
-  const enrollments = await repo.listEnrollments(userId);
-  for (const e of enrollments) {
-    await getOrIssueCertificate(repo, userId, e.courseId, nowIso);
+  const [enrollments, certificates] = await Promise.all([
+    repo.listEnrollments(userId),
+    repo.listCertificates(userId),
+  ]);
+  const issuedCourseIds = new Set(certificates.map((c) => c.courseId));
+  const pendingCourseIds = enrollments
+    .map((e) => e.courseId)
+    .filter((id) => !issuedCourseIds.has(id));
+  if (pendingCourseIds.length === 0) return certificates;
+
+  const [structures, progress, attempts, bonusByEvaluation, profile, user] = await Promise.all([
+    repo.getCourseStructures(pendingCourseIds),
+    repo.listModuleProgress(userId),
+    repo.listAttemptsByUser(userId),
+    repo.listBonusAttemptsByUser(userId),
+    repo.getStudentProfile(userId),
+    repo.getUserById(userId),
+  ]);
+
+  let issuedAny = false;
+  for (const structure of structures) {
+    const vm = courseViewFrom(structure, progress, attempts, bonusByEvaluation, nowIso);
+    if (!vm.certificateEligible) continue;
+    await repo.issueCertificate(certificateSnapshot(vm, userId, profile, user, nowIso));
+    issuedAny = true;
   }
-  return repo.listCertificates(userId);
+  return issuedAny ? repo.listCertificates(userId) : certificates;
 }

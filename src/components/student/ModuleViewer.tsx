@@ -1,68 +1,101 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { Check } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Check, Maximize2, Play } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/cn";
 import { Card } from "@/components/ui/Card";
 import { Label } from "@/components/ui/Label";
 import { Button } from "@/components/ui/Button";
-import { toEmbedVideoUrl } from "@/lib/video";
+import { HtmlEmbed, type HtmlEmbedHandle } from "@/components/student/HtmlEmbed";
+import { detectHtmlLayout } from "@/lib/htmlLayout";
+import { toEmbedVideoUrl, youTubeIdOf, youTubePlayerUrl } from "@/lib/video";
+import { getRepository } from "@/lib/data";
+import { queryKeys } from "@/lib/query";
 import type { Module } from "@/lib/domain/types";
 
 /**
- * Script inyectado al final del HTML de autor: mide la altura real del
- * contenido y se la reporta al padre por postMessage. Necesario porque el
- * iframe va en sandbox sin "allow-same-origin" (origen opaco) — el padre no
- * puede leer su scrollHeight directamente.
+ * Lectura en caché del HTML de un módulo. Exportada para que la vista de
+ * curso precargue el módulo siguiente con la misma clave. El contenido de
+ * un módulo casi nunca cambia durante una clase: 10 minutos sin refetch.
  */
-const AUTO_RESIZE_SCRIPT = `
-<script>
-(function () {
-  function send() {
-    // OJO: document.documentElement.scrollHeight tiene un "piso" en el alto
-    // actual del viewport del iframe (nunca reporta menos), así que con
-    // contenido corto queda pegado al alto por defecto. body.getBoundingClientRect()
-    // sí refleja el alto real del contenido, sin ese piso.
-    var h = document.body
-      ? Math.ceil(document.body.getBoundingClientRect().height)
-      : 0;
-    if (h > 0) parent.postMessage({ type: "equidata-resize", height: h }, "*");
-  }
-  // Una sola medición (al cargar o por ResizeObserver) puede llegar antes de
-  // que el layout termine de asentarse y reportar 0 — se reintenta varias
-  // veces al inicio como respaldo, además de observar cambios posteriores.
-  [0, 50, 150, 400, 900].forEach(function (ms) { setTimeout(send, ms); });
-  window.addEventListener("load", send);
-  if (window.ResizeObserver) {
-    new ResizeObserver(send).observe(document.documentElement);
-  } else {
-    setInterval(send, 500);
-  }
-})();
-</script>
-`;
-
-function withAutoResize(html: string): string {
-  if (html.includes("</body>")) {
-    return html.replace("</body>", `${AUTO_RESIZE_SCRIPT}</body>`);
-  }
-  return html + AUTO_RESIZE_SCRIPT;
+export function moduleContentQuery(moduleId: string) {
+  return {
+    queryKey: queryKeys.moduleContent(moduleId),
+    queryFn: async () => (await getRepository().getModuleContent(moduleId))?.contentHtml ?? "",
+    staleTime: 10 * 60_000,
+  };
 }
 
-const MIN_HTML_HEIGHT = 180;
-const MAX_HTML_HEIGHT = 820;
-const DEFAULT_HTML_HEIGHT = 320;
+/**
+ * HTML del módulo: las listas no lo traen (M10 · F4, puede pesar cientos de
+ * KB), así que se pide aquí, solo para el módulo que se está viendo. Si el
+ * módulo ya trae su HTML, se usa tal cual.
+ */
+function useModuleHtml(module: Module) {
+  const needsFetch = module.type === "html" && module.contentHtml === undefined;
+  const query = useQuery({ ...moduleContentQuery(module.id), enabled: needsFetch });
+  if (!needsFetch) return { contentHtml: module.contentHtml, loadingContent: false };
+  return { contentHtml: query.data, loadingContent: query.isPending };
+}
 
 /**
- * Contenido del módulo activo: video embebido o HTML embebido y aislado.
- * El HTML se ajusta a la altura real de su contenido (ni espacio en blanco
- * de sobra, ni recorte de contenido largo) en vez de una altura fija.
- *
- * El HTML de autor lo escribe el profesor (contenido de confianza, no de
- * terceros) — se renderiza en un iframe con sandbox="allow-scripts" para que
- * corra su JS interactivo pero quede en un origen opaco, sin acceso a la
- * sesión ni a los datos de la página (aislamiento por robustez, no por
- * desconfianza del autor — spec §6).
+ * Video de YouTube en dos tiempos (M10 · F5): primero la miniatura (una
+ * imagen de ~20 KB) con un botón de reproducir; el reproductor completo de
+ * YouTube, que pesa bastante más, se carga solo al pulsarlo. Otros
+ * proveedores se embeben directo, como antes.
+ */
+function VideoEmbed({ module }: { module: Module }) {
+  const [playing, setPlaying] = useState(false);
+  const videoUrl = module.videoUrl ?? "";
+  const videoId = youTubeIdOf(videoUrl);
+
+  useEffect(() => setPlaying(false), [module.id]);
+
+  if (!videoId || playing) {
+    return (
+      <iframe
+        key={module.id}
+        src={videoId ? youTubePlayerUrl(videoId) : toEmbedVideoUrl(videoUrl)}
+        title={module.title}
+        className="aspect-video w-full"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowFullScreen
+      />
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => setPlaying(true)}
+      className="group relative block aspect-video w-full"
+      aria-label={`Reproducir: ${module.title}`}
+    >
+      {/* Conexiones anticipadas: el reproductor arranca más rápido al hacer clic. */}
+      <link rel="preconnect" href="https://www.youtube-nocookie.com" />
+      <link rel="preconnect" href="https://i.ytimg.com" />
+      {/* Miniatura remota de YouTube: next/image necesitaría configurar el dominio y no aporta aquí. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={`https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`}
+        alt=""
+        className="h-full w-full object-cover"
+        loading="lazy"
+      />
+      <span className="absolute inset-0 flex items-center justify-center">
+        <span className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--color-navy)] text-white shadow-[0_8px_24px_rgba(0,0,0,0.35)] transition-transform group-hover:scale-105">
+          <Play size={26} className="ml-1" fill="currentColor" />
+        </span>
+      </span>
+    </button>
+  );
+}
+
+/**
+ * Contenido del módulo activo: video embebido o HTML de autor aislado. El
+ * cuadro del HTML depende de cómo está hecho (ver `HtmlEmbed` y
+ * `detectHtmlLayout`); cualquier HTML se puede abrir en pantalla completa.
  */
 export function ModuleViewer({
   module,
@@ -75,71 +108,62 @@ export function ModuleViewer({
   onComplete: () => void;
   primaryLabel?: string;
 }) {
-  const iframeRef = useRef<HTMLIFrameElement>(null);
-  const [htmlHeight, setHtmlHeight] = useState(DEFAULT_HTML_HEIGHT);
-
-  useEffect(() => {
-    setHtmlHeight(DEFAULT_HTML_HEIGHT);
-
-    function onMessage(e: MessageEvent) {
-      if (
-        e.source === iframeRef.current?.contentWindow &&
-        e.data?.type === "equidata-resize"
-      ) {
-        const h = Math.min(
-          Math.max(Number(e.data.height) || DEFAULT_HTML_HEIGHT, MIN_HTML_HEIGHT),
-          MAX_HTML_HEIGHT,
-        );
-        setHtmlHeight(h);
-      }
-    }
-    window.addEventListener("message", onMessage);
-    return () => window.removeEventListener("message", onMessage);
-  }, [module.id]);
+  const embedRef = useRef<HtmlEmbedHandle>(null);
+  const { contentHtml, loadingContent } = useModuleHtml(module);
+  const isHtml = module.type === "html";
+  const layout = useMemo(
+    () => (contentHtml ? detectHtmlLayout(contentHtml) : "fragment"),
+    [contentHtml],
+  );
 
   return (
     <Card bordered>
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex items-center justify-between gap-3">
         <Label>
           {module.type === "video" ? "Video embebido" : "HTML embebido"} ·{" "}
           {module.durationMin ?? 10} min
         </Label>
-        {completed && (
-          <span className="flex items-center gap-1.5 text-xs font-medium text-[var(--color-lime-text)]">
-            <Check size={14} /> Completado
-          </span>
-        )}
+        <div className="flex items-center gap-4">
+          {isHtml && !loadingContent && (
+            <button
+              type="button"
+              onClick={() => embedRef.current?.requestFullscreen()}
+              className="flex items-center gap-1.5 text-xs font-medium text-[var(--color-lavender-text)] hover:underline"
+            >
+              <Maximize2 size={13} /> Pantalla completa
+            </button>
+          )}
+          {completed && (
+            <span className="flex items-center gap-1.5 text-xs font-medium text-[var(--color-lime-text)]">
+              <Check size={14} /> Completado
+            </span>
+          )}
+        </div>
       </div>
 
       <div
         className={cn(
           "overflow-hidden rounded-[var(--radius-token)] border border-[var(--color-divider)] bg-black",
-          // El video mantiene 16:9; en pantallas anchas eso puede crecer más
-          // alto que el viewport. Se limita el ancho según el alto disponible
-          // (100vh menos el resto del chrome de la página) para que nunca
-          // obligue a hacer scroll vertical.
-          module.type === "video" &&
-            "mx-auto max-w-[calc((100vh-190px)*16/9)]",
+          // Video y presentación mantienen 16:9; en pantallas anchas eso
+          // puede crecer más alto que la pantalla, así que el ancho se limita
+          // según el alto disponible — nunca obligan a desplazar la página.
+          module.type === "video" && "mx-auto max-w-[calc((100vh-190px)*16/9)]",
+          isHtml && layout === "slides" && "mx-auto max-w-[calc((100dvh-250px)*16/9)]",
         )}
       >
         {module.type === "video" ? (
-          <iframe
-            key={module.id}
-            src={module.videoUrl ? toEmbedVideoUrl(module.videoUrl) : module.videoUrl}
-            title={module.title}
-            className="aspect-video w-full"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-          />
+          <VideoEmbed module={module} />
+        ) : loadingContent ? (
+          <div className="flex h-80 items-center justify-center bg-white text-sm text-[var(--color-muted)]">
+            Cargando el recurso…
+          </div>
         ) : (
-          <iframe
-            key={module.id}
-            ref={iframeRef}
-            srcDoc={withAutoResize(module.contentHtml ?? "")}
+          <HtmlEmbed
+            ref={embedRef}
+            moduleId={module.id}
             title={module.title}
-            style={{ height: htmlHeight }}
-            className="w-full bg-white transition-[height] duration-150"
-            sandbox="allow-scripts"
+            html={contentHtml ?? ""}
+            layout={layout}
           />
         )}
       </div>

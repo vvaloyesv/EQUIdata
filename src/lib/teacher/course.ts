@@ -28,23 +28,22 @@ export async function buildTeacherCourseView(
   repo: Repository,
   courseId: string,
 ): Promise<TeacherCourseVM> {
-  const course = await repo.getCourse(courseId);
-  if (!course) throw new Error(`Curso no encontrado: ${courseId}`);
+  // M10 · F4: tres lecturas en paralelo (antes, una por sesión en serie).
+  const [structures, allStudents, enrollments] = await Promise.all([
+    repo.getCourseStructures([courseId]),
+    repo.listUsersByRole("student"),
+    repo.listEnrollmentsByCourse(courseId),
+  ]);
+  const structure = structures[0];
+  if (!structure) throw new Error(`Curso no encontrado: ${courseId}`);
+  const { course, sessions, modulesBySession, evaluations } = structure;
 
-  const sessions = await repo.listSessions(courseId);
-  const evaluations = await repo.listEvaluations(courseId);
+  const sessionVMs: TeacherSessionVM[] = sessions.map((session) => ({
+    session,
+    modules: modulesBySession[session.id] ?? [],
+    quiz: evaluations.find((e) => e.kind === "quiz" && e.sessionId === session.id),
+  }));
 
-  const sessionVMs: TeacherSessionVM[] = [];
-  for (const session of sessions) {
-    const modules = await repo.listModules(session.id);
-    const quiz = evaluations.find(
-      (e) => e.kind === "quiz" && e.sessionId === session.id,
-    );
-    sessionVMs.push({ session, modules, quiz });
-  }
-
-  const allStudents = await repo.listUsersByRole("student");
-  const enrollments = await repo.listEnrollmentsByCourse(courseId);
   const enrolledIds = new Set(enrollments.map((e) => e.userId));
   const enrolledStudents = allStudents.filter((s) => enrolledIds.has(s.id));
   const availableStudents = allStudents.filter((s) => !enrolledIds.has(s.id));

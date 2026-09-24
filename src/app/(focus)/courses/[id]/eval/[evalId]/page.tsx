@@ -1,8 +1,8 @@
 "use client";
 
-import { use, useState } from "react";
+import { use } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { useAsync } from "@/lib/useAsync";
+import { useRefresh, useRepoQuery } from "@/lib/query";
 import { getRepository } from "@/lib/data";
 import { buildEvaluationView } from "@/lib/student/evaluation";
 import { FocusTopBar } from "@/components/student/FocusTopBar";
@@ -20,20 +20,18 @@ export default function EvalPage({
 }) {
   const { id: courseId, evalId } = use(params);
   const { user } = useAuth();
-  const [reloadKey, setReloadKey] = useState(0);
-  const refresh = () => setReloadKey((k) => k + 1);
+  const invalidate = useRefresh();
+  const refresh = () => void invalidate();
+  const userId = user?.id ?? "";
 
-  const { data: vm, loading } = useAsync(
-    () =>
-      user
-        ? buildEvaluationView(getRepository(), user.id, evalId, new Date().toISOString())
-        : Promise.resolve(null),
-    [user?.id, evalId, reloadKey],
+  const { data: vm, loading } = useRepoQuery(
+    ["evaluation-view", userId, evalId],
+    () => buildEvaluationView(getRepository(), userId, evalId, new Date().toISOString()),
+    { enabled: !!user },
   );
 
-  const { data: course } = useAsync(
-    () => getRepository().getCourse(courseId),
-    [courseId],
+  const { data: course } = useRepoQuery(["course", courseId], () =>
+    getRepository().getCourse(courseId),
   );
 
   const submission = useEvalSubmission(vm, user, courseId, refresh);

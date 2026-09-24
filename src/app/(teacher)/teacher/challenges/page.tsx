@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Target } from "lucide-react";
-import { useAsync } from "@/lib/useAsync";
+import { useRefresh, useRepoQuery } from "@/lib/query";
 import { getRepository } from "@/lib/data";
 import { genId } from "@/lib/teacher/course";
 import { Card } from "@/components/ui/Card";
@@ -18,12 +18,11 @@ const DIFFICULTY_TONE = {
 } as const;
 
 export default function TeacherChallengesPage() {
-  const [reloadKey, setReloadKey] = useState(0);
+  const refresh = useRefresh();
   const [adding, setAdding] = useState(false);
 
-  const { data: challenges, loading } = useAsync(
-    () => getRepository().listChallenges(),
-    [reloadKey],
+  const { data: challenges, loading } = useRepoQuery(["teacher-challenges"], () =>
+    getRepository().listChallenges(),
   );
 
   if (loading || !challenges) {
@@ -46,7 +45,7 @@ export default function TeacherChallengesPage() {
       ...data,
     });
     setAdding(false);
-    setReloadKey((k) => k + 1);
+    await refresh();
   }
 
   return (

@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuth } from "@/context/AuthContext";
-import { useAsync } from "@/lib/useAsync";
+import { useRepoQuery } from "@/lib/query";
 import { getRepository } from "@/lib/data";
 import { Card } from "@/components/ui/Card";
 import { Label } from "@/components/ui/Label";
@@ -29,10 +29,11 @@ const KIND_TONE: Record<CalendarEvent["kind"], "lime" | "coral" | "lavender" | "
  */
 export default function CalendarPage() {
   const { user } = useAuth();
-  const { data: events, loading } = useAsync(
-    () =>
-      user ? getRepository().listCalendarEvents(user.id) : Promise.resolve([]),
-    [user?.id],
+  const userId = user?.id ?? "";
+  const { data: events, loading } = useRepoQuery(
+    ["calendar", userId],
+    () => getRepository().listCalendarEvents(userId),
+    { enabled: !!user },
   );
 
   if (loading || !events) {

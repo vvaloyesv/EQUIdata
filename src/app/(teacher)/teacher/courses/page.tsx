@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Users } from "lucide-react";
-import { useAsync } from "@/lib/useAsync";
+import { useRepoQuery } from "@/lib/query";
 import { getRepository } from "@/lib/data";
 import { Card } from "@/components/ui/Card";
 import { Label } from "@/components/ui/Label";
@@ -10,32 +10,12 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { ProgressBar } from "@/components/ui/Progress";
 import { EmptyState } from "@/components/ui/LockedState";
-import { getCourseCompletion } from "@/lib/student/course";
+import { buildTeacherCourseRows } from "@/lib/teacher/progress";
 
 export default function TeacherCoursesPage() {
-  const { data: rows, loading } = useAsync(async () => {
-    const repo = getRepository();
-    const courses = await repo.listCourses();
-    const out = [];
-    for (const course of courses) {
-      const enrollments = await repo.listEnrollmentsByCourse(course.id);
-      let sum = 0;
-      for (const e of enrollments) {
-        const { total, completed } = await getCourseCompletion(
-          repo,
-          e.userId,
-          course.id,
-        );
-        sum += total > 0 ? (completed / total) * 100 : 0;
-      }
-      out.push({
-        course,
-        studentCount: enrollments.length,
-        avgProgress: enrollments.length ? Math.round(sum / enrollments.length) : 0,
-      });
-    }
-    return out;
-  }, []);
+  const { data: rows, loading } = useRepoQuery(["teacher-course-rows"], () =>
+    buildTeacherCourseRows(getRepository()),
+  );
 
   if (loading || !rows) {
     return (

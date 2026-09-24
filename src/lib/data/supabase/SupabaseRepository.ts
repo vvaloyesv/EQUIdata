@@ -24,12 +24,14 @@ import type {
   Certificate,
   Challenge,
   ChallengeAttempt,
-  CommunityLike,
   CommunityPost,
+  CommunityPostWithStats,
   CommunityReply,
   Course,
+  CourseStructure,
   Enrollment,
   Evaluation,
+  EvaluationDetail,
   LearningOutcome,
   Message,
   Module,
@@ -198,9 +200,17 @@ interface ModuleRow {
   title: string;
   description: string;
   video_url: string | null;
-  content_html: string | null;
+  /** Ausente en las listas (ver MODULE_LIST_COLUMNS). */
+  content_html?: string | null;
   duration_min: number | null;
 }
+/**
+ * Columnas de módulo para listas: todo menos `content_html`. El HTML de un
+ * módulo puede pesar cientos de KB y solo hace falta al abrirlo — antes cada
+ * pantalla que listaba módulos lo descargaba de todos (M10 · F4).
+ */
+const MODULE_LIST_COLUMNS =
+  "id, session_id, context, order_index, type, title, description, video_url, duration_min";
 const toModule = (r: ModuleRow): Module => ({
   id: r.id,
   sessionId: r.session_id,
@@ -541,17 +551,6 @@ const fromCommunityPost = (p: CommunityPost) => ({
   created_at: p.createdAt,
 });
 
-interface CommunityLikeRow {
-  post_id: string;
-  user_id: string;
-  created_at: string;
-}
-const toCommunityLike = (r: CommunityLikeRow): CommunityLike => ({
-  postId: r.post_id,
-  userId: r.user_id,
-  createdAt: r.created_at,
-});
-
 interface CommunityReplyRow {
   id: string;
   post_id: string;
@@ -702,19 +701,33 @@ const fromChallengeAttempt = (a: ChallengeAttempt) => ({
   completed_at: a.completedAt,
 });
 
+/**
+ * PostgREST responde PGRST202 cuando la función RPC no existe — pasa si la
+ * migración 0007 todavía no se corrió en la base. Solo en ese caso se usa el
+ * camino anterior; cualquier otro error se propaga.
+ */
+function isMissingFunction(error: { code?: string }): boolean {
+  return error.code === "PGRST202";
+}
+
+/** PostgREST devuelve una relación uno-a-uno como objeto, o como array según la versión/FK. */
+function one<T>(value: T | T[] | null | undefined): T | undefined {
+  return Array.isArray(value) ? value[0] : (value ?? undefined);
+}
+
+const byOrder = <T extends { order: number }>(a: T, b: T) => a.order - b.order;
+
 // ────────────────────────────────────────────────────────────────
 
 export class SupabaseRepository implements Repository {
-  private supabase: SupabaseClient = createClient();
+  private supabase: SupabaseClient;
+
+  /** El cliente se inyecta en pruebas de carga (un cliente por persona virtual); la app usa el del navegador. */
+  constructor(client?: SupabaseClient) {
+    this.supabase = client ?? createClient();
+  }
 
   // Identidad ---------------------------------------------------------------
-  async getCurrentUser() {
-    const {
-      data: { user: authUser },
-    } = await this.supabase.auth.getUser();
-    if (!authUser) return null;
-    return this.getUserById(authUser.id);
-  }
   async getUserById(id: string) {
     const { data, error } = await this.supabase
       .from("profiles")
@@ -850,7 +863,7 @@ export class SupabaseRepository implements Repository {
   async listModules(sessionId: string) {
     const { data, error } = await this.supabase
       .from("modules")
-      .select("*")
+      .select(MODULE_LIST_COLUMNS)
       .eq("session_id", sessionId)
       .order("order_index");
     if (error) throw new Error(error.message);
@@ -880,20 +893,11 @@ export class SupabaseRepository implements Repository {
   async listTutorials() {
     const { data, error } = await this.supabase
       .from("modules")
-      .select("*")
+      .select(MODULE_LIST_COLUMNS)
       .eq("context", "tutorial")
       .order("order_index");
     if (error) throw new Error(error.message);
     return (data as ModuleRow[]).map(toModule);
-  }
-  async getModule(moduleId: string) {
-    const { data, error } = await this.supabase
-      .from("modules")
-      .select("*")
-      .eq("id", moduleId)
-      .maybeSingle();
-    if (error) throw new Error(error.message);
-    return data ? toModule(data as ModuleRow) : null;
   }
 
   // Inscripción / progreso --------------------------------------------------
@@ -959,15 +963,6 @@ export class SupabaseRepository implements Repository {
     if (error) throw new Error(error.message);
     return (data as EvaluationRow[]).map(toEvaluation);
   }
-  async getEvaluation(evaluationId: string) {
-    const { data, error } = await this.supabase
-      .from("evaluations")
-      .select("*")
-      .eq("id", evaluationId)
-      .maybeSingle();
-    if (error) throw new Error(error.message);
-    return data ? toEvaluation(data as EvaluationRow) : null;
-  }
   async createEvaluation(evaluation: Evaluation) {
     const parsed = EvaluationSchema.parse(evaluation);
     const { data, error } = await this.supabase
@@ -1017,15 +1012,6 @@ export class SupabaseRepository implements Repository {
     if (error) throw new Error(error.message);
     return toOutcome(data as LearningOutcomeRow);
   }
-  async listQuestions(evaluationId: string) {
-    const { data, error } = await this.supabase
-      .from("questions")
-      .select("*")
-      .eq("evaluation_id", evaluationId)
-      .order("order_index");
-    if (error) throw new Error(error.message);
-    return (data as QuestionRow[]).map(toQuestion);
-  }
   async createQuestion(question: Question) {
     const parsed = QuestionSchema.parse(question);
     const { data, error } = await this.supabase
@@ -1035,14 +1021,6 @@ export class SupabaseRepository implements Repository {
       .single();
     if (error) throw new Error(error.message);
     return toQuestion(data as QuestionRow);
-  }
-  async listOptions(questionId: string) {
-    const { data, error } = await this.supabase
-      .from("question_options")
-      .select("*")
-      .eq("question_id", questionId);
-    if (error) throw new Error(error.message);
-    return (data as QuestionOptionRow[]).map(toOption);
   }
   async createOption(option: QuestionOption) {
     const parsed = QuestionOptionSchema.parse(option);
@@ -1098,7 +1076,8 @@ export class SupabaseRepository implements Repository {
     if (error) throw new Error(error.message);
     return (data as AttemptRow[]).map(toAttempt);
   }
-  async createAttempt(attempt: Attempt) {
+  /** Solo para el respaldo de `submitAttempt` sin la migración 0007. */
+  private async createAttempt(attempt: Attempt) {
     const parsed = AttemptSchema.parse(attempt);
     const { data, error } = await this.supabase
       .from("attempts")
@@ -1108,7 +1087,7 @@ export class SupabaseRepository implements Repository {
     if (error) throw new Error(error.message);
     return toAttempt(data as AttemptRow);
   }
-  async saveAnswers(answers: Answer[]) {
+  private async saveAnswers(answers: Answer[]) {
     const rows = answers.map((a) => fromAnswer(AnswerSchema.parse(a)));
     if (rows.length === 0) return;
     const { error } = await this.supabase.from("answers").insert(rows);
@@ -1122,7 +1101,7 @@ export class SupabaseRepository implements Repository {
     if (error) throw new Error(error.message);
     return (data as AnswerRow[]).map(toAnswer);
   }
-  async saveOutcomeScores(scores: OutcomeScore[]) {
+  private async saveOutcomeScores(scores: OutcomeScore[]) {
     const rows = scores.map((s) => fromOutcomeScore(OutcomeScoreSchema.parse(s)));
     if (rows.length === 0) return;
     const { error } = await this.supabase.from("outcome_scores").insert(rows);
@@ -1147,6 +1126,15 @@ export class SupabaseRepository implements Repository {
     return data?.count ?? 0;
   }
   async grantBonusAttempt(userId: string, evaluationId: string) {
+    // Incremento atómico (0007). Si la migración aún no se corrió, se cae
+    // al leer-y-escribir anterior.
+    const { error: rpcError } = await this.supabase.rpc("grant_bonus_attempt", {
+      p_user_id: userId,
+      p_evaluation_id: evaluationId,
+    });
+    if (!rpcError) return;
+    if (!isMissingFunction(rpcError)) throw new Error(rpcError.message);
+
     const current = await this.getBonusAttempts(userId, evaluationId);
     const { error } = await this.supabase
       .from("bonus_attempts")
@@ -1184,14 +1172,6 @@ export class SupabaseRepository implements Repository {
   }
 
   // Comunidad -----------------------------------------------------------
-  async listCommunityPosts() {
-    const { data, error } = await this.supabase
-      .from("community_posts")
-      .select("*")
-      .order("created_at", { ascending: false });
-    if (error) throw new Error(error.message);
-    return (data as CommunityPostRow[]).map(toCommunityPost);
-  }
   async createCommunityPost(post: CommunityPost) {
     const parsed = CommunityPostSchema.parse(post);
     const { data, error } = await this.supabase
@@ -1201,14 +1181,6 @@ export class SupabaseRepository implements Repository {
       .single();
     if (error) throw new Error(error.message);
     return toCommunityPost(data as CommunityPostRow);
-  }
-  async listCommunityLikes(postId: string) {
-    const { data, error } = await this.supabase
-      .from("community_likes")
-      .select("*")
-      .eq("post_id", postId);
-    if (error) throw new Error(error.message);
-    return (data as CommunityLikeRow[]).map(toCommunityLike);
   }
   async toggleCommunityLike(postId: string, userId: string) {
     const { data: existing, error: findError } = await this.supabase
@@ -1442,5 +1414,254 @@ export class SupabaseRepository implements Repository {
       courseId: s.course_id as string,
     }));
     return events.sort((a, b) => a.date.localeCompare(b.date));
+  }
+
+  // Lecturas y escrituras en bloque (M10 · F4) -----------------------------
+  // Las relaciones embebidas llevan el nombre de su FK (`tabla!fk(...)`):
+  // community_likes es una tabla puente posts↔profiles y, sin la pista,
+  // PostgREST no sabe qué camino usar (PGRST201). Se ponen en todas para
+  // que agregar una FK nueva nunca rompa una consulta que hoy funciona.
+
+  async getCourseStructures(courseIds: string[]): Promise<CourseStructure[]> {
+    if (courseIds.length === 0) return [];
+    const { data, error } = await this.supabase
+      .from("courses")
+      .select(
+        `*, sessions!sessions_course_id_fkey(*, modules!modules_session_id_fkey(${MODULE_LIST_COLUMNS})), evaluations!evaluations_course_id_fkey(*)`,
+      )
+      .in("id", courseIds);
+    if (error) throw new Error(error.message);
+
+    type Row = CourseRow & {
+      sessions: (SessionRow & { modules: ModuleRow[] })[];
+      evaluations: EvaluationRow[];
+    };
+    const byId = new Map((data as Row[]).map((r) => [r.id, r]));
+    // Mismo orden que los ids pedidos (el dashboard muestra los cursos en el orden de inscripción).
+    return courseIds.flatMap((id) => {
+      const r = byId.get(id);
+      if (!r) return [];
+      const sessions = r.sessions.map(toSession).sort(byOrder);
+      const modulesBySession: Record<string, Module[]> = {};
+      for (const s of r.sessions) {
+        modulesBySession[s.id] = s.modules.map(toModule).sort(byOrder);
+      }
+      return [{ course: toCourse(r), sessions, modulesBySession, evaluations: r.evaluations.map(toEvaluation) }];
+    });
+  }
+
+  async getModuleContent(moduleId: string) {
+    const { data, error } = await this.supabase
+      .from("modules")
+      .select("content_html, video_url")
+      .eq("id", moduleId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!data) return null;
+    return {
+      contentHtml: (data.content_html as string | null) ?? undefined,
+      videoUrl: (data.video_url as string | null) ?? undefined,
+    };
+  }
+
+  async getEvaluationDetail(evaluationId: string): Promise<EvaluationDetail | null> {
+    const { data, error } = await this.supabase
+      .from("evaluations")
+      .select(
+        "*, questions!questions_evaluation_id_fkey(*, question_options!question_options_question_id_fkey(*)), learning_outcomes!learning_outcomes_evaluation_id_fkey(*)",
+      )
+      .eq("id", evaluationId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!data) return null;
+
+    type Row = EvaluationRow & {
+      questions: (QuestionRow & { question_options: QuestionOptionRow[] })[];
+      learning_outcomes: LearningOutcomeRow[];
+    };
+    const row = data as Row;
+    const questions = row.questions.map(toQuestion).sort(byOrder);
+    const optionsByQuestion: Record<string, QuestionOption[]> = {};
+    for (const q of row.questions) optionsByQuestion[q.id] = q.question_options.map(toOption);
+    return {
+      evaluation: toEvaluation(row),
+      questions,
+      optionsByQuestion,
+      outcomes: row.learning_outcomes.map(toOutcome),
+    };
+  }
+
+  async listTutorialQuizzes() {
+    const { data, error } = await this.supabase
+      .from("evaluations")
+      .select("*")
+      .eq("kind", "tutorial_quiz");
+    if (error) throw new Error(error.message);
+    return (data as EvaluationRow[]).map(toEvaluation);
+  }
+
+  async listUsersByIds(ids: string[]) {
+    if (ids.length === 0) return [];
+    const { data, error } = await this.supabase.from("profiles").select("*").in("id", ids);
+    if (error) throw new Error(error.message);
+    return (data as ProfileRow[]).map(toUser);
+  }
+
+  async listAllEnrollments() {
+    const { data, error } = await this.supabase.from("enrollments").select("*");
+    if (error) throw new Error(error.message);
+    return (data as EnrollmentRow[]).map(toEnrollment);
+  }
+
+  async listModuleProgressForUsers(userIds: string[]) {
+    if (userIds.length === 0) return [];
+    const { data, error } = await this.supabase
+      .from("module_progress")
+      .select("*")
+      .in("user_id", userIds);
+    if (error) throw new Error(error.message);
+    return (data as ModuleProgressRow[]).map(toProgress);
+  }
+
+  async listAttemptsByUser(userId: string) {
+    const { data, error } = await this.supabase
+      .from("attempts")
+      .select("*")
+      .eq("user_id", userId);
+    if (error) throw new Error(error.message);
+    return (data as AttemptRow[]).map(toAttempt);
+  }
+
+  async listAttemptsByEvaluations(evaluationIds: string[]) {
+    if (evaluationIds.length === 0) return [];
+    const { data, error } = await this.supabase
+      .from("attempts")
+      .select("*")
+      .in("evaluation_id", evaluationIds);
+    if (error) throw new Error(error.message);
+    return (data as AttemptRow[]).map(toAttempt);
+  }
+
+  async listBonusAttemptsByUser(userId: string) {
+    const { data, error } = await this.supabase
+      .from("bonus_attempts")
+      .select("evaluation_id, count")
+      .eq("user_id", userId);
+    if (error) throw new Error(error.message);
+    return Object.fromEntries(
+      (data as { evaluation_id: string; count: number }[]).map((r) => [r.evaluation_id, r.count]),
+    );
+  }
+
+  async listBonusAttemptsByEvaluation(evaluationId: string) {
+    const { data, error } = await this.supabase
+      .from("bonus_attempts")
+      .select("user_id, count")
+      .eq("evaluation_id", evaluationId);
+    if (error) throw new Error(error.message);
+    return Object.fromEntries(
+      (data as { user_id: string; count: number }[]).map((r) => [r.user_id, r.count]),
+    );
+  }
+
+  async listAnswersByAttempts(attemptIds: string[]) {
+    if (attemptIds.length === 0) return [];
+    const { data, error } = await this.supabase
+      .from("answers")
+      .select("*")
+      .in("attempt_id", attemptIds);
+    if (error) throw new Error(error.message);
+    return (data as AnswerRow[]).map(toAnswer);
+  }
+
+  async listOutcomeScoresByAttempts(attemptIds: string[]) {
+    if (attemptIds.length === 0) return [];
+    const { data, error } = await this.supabase
+      .from("outcome_scores")
+      .select("*")
+      .in("attempt_id", attemptIds);
+    if (error) throw new Error(error.message);
+    return (data as OutcomeScoreRow[]).map(toOutcomeScore);
+  }
+
+  async countUnreadMessages(userId: string) {
+    const { count, error } = await this.supabase
+      .from("messages")
+      .select("id", { count: "exact", head: true })
+      .eq("to_user_id", userId)
+      .eq("read", false);
+    if (error) throw new Error(error.message);
+    return count ?? 0;
+  }
+
+  async listCommunityFeed(): Promise<CommunityPostWithStats[]> {
+    const [{ data, error }, hiddenIds] = await Promise.all([
+      this.supabase
+        .from("community_posts")
+        .select(
+          "*, author:profiles!community_posts_author_id_fkey(display_name), community_likes(user_id), community_replies(count)",
+        )
+        .order("created_at", { ascending: false }),
+      this.listHiddenCommunityAuthorIds(),
+    ]);
+    if (error) throw new Error(error.message);
+
+    type Row = CommunityPostRow & {
+      author: { display_name: string } | { display_name: string }[] | null;
+      community_likes: { user_id: string }[];
+      community_replies: { count: number }[];
+    };
+    const hidden = new Set(hiddenIds);
+    return (data as Row[]).map((r) => ({
+      post: toCommunityPost(r),
+      authorDisplayName: one(r.author)?.display_name ?? "Alguien",
+      authorHidesName: hidden.has(r.author_id),
+      likeUserIds: r.community_likes.map((l) => l.user_id),
+      replyCount: r.community_replies[0]?.count ?? 0,
+    }));
+  }
+
+  async listHiddenCommunityAuthorIds(): Promise<string[]> {
+    // 0008: función que devuelve solo quiénes ocultan su nombre, visible para
+    // cualquier autenticado sin abrir el resto del perfil.
+    const { data, error } = await this.supabase.rpc("community_hidden_author_ids");
+    if (!error) return (data as string[]) ?? [];
+    if (!isMissingFunction(error)) throw new Error(error.message);
+
+    // 0008 aún no corrida: lo que la RLS deje ver (solo el propio perfil, o
+    // todos para la profesora) — el comportamiento anterior.
+    const { data: rows, error: selectError } = await this.supabase
+      .from("student_profiles")
+      .select("user_id")
+      .eq("show_name_in_community", false);
+    if (selectError) throw new Error(selectError.message);
+    return (rows as { user_id: string }[]).map((r) => r.user_id);
+  }
+
+  async submitAttempt(attempt: Attempt, answers: Answer[], outcomeScores: OutcomeScore[]) {
+    const attemptRow = fromAttempt(AttemptSchema.parse(attempt));
+    const answerRows = answers.map((a) => fromAnswer(AnswerSchema.parse(a)));
+    const scoreRows = outcomeScores.map((s) => fromOutcomeScore(OutcomeScoreSchema.parse(s)));
+
+    // Una transacción en Postgres (0007): el intento entra completo o no entra.
+    const { error } = await this.supabase.rpc("submit_attempt", {
+      p_attempt: attemptRow,
+      p_answers: answerRows,
+      p_outcome_scores: scoreRows,
+    });
+    if (!error) return;
+    if (!isMissingFunction(error)) throw new Error(error.message);
+
+    // 0007 aún no corrida: los tres inserts de antes, en orden.
+    await this.createAttempt(attempt);
+    await this.saveAnswers(answers);
+    await this.saveOutcomeScores(outcomeScores);
+  }
+
+  async sendMessages(messages: Message[]) {
+    if (messages.length === 0) return;
+    const rows = messages.map((m) => fromMessage(MessageSchema.parse(m)));
+    const { error } = await this.supabase.from("messages").insert(rows);
+    if (error) throw new Error(error.message);
   }
 }

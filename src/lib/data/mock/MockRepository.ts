@@ -25,10 +25,13 @@ import type {
   Challenge,
   ChallengeAttempt,
   CommunityPost,
+  CommunityPostWithStats,
   CommunityReply,
   Course,
+  CourseStructure,
   Enrollment,
   Evaluation,
+  EvaluationDetail,
   LearningOutcome,
   Message,
   Module,
@@ -77,6 +80,13 @@ function clone<T>(x: T): T {
   return JSON.parse(JSON.stringify(x)) as T;
 }
 
+/** Paridad con SupabaseRepository (M10 · F4): las listas de módulos no traen el HTML. */
+function withoutContent(m: Module): Module {
+  const { contentHtml: _omit, ...rest } = m;
+  void _omit;
+  return rest;
+}
+
 /** Error de integridad: id duplicado, referencia inexistente o regla de negocio violada. */
 export class RepositoryError extends Error {}
 
@@ -113,17 +123,7 @@ export class MockRepository implements Repository {
   private challenges = clone(seed.challenges);
   private challengeAttempts: ChallengeAttempt[] = [];
 
-  /** Usuario "logueado". null = sin sesión (arranca así; el login lo fija). */
-  private currentUserId: string | null = null;
-
-  setCurrentUser(userId: string | null) {
-    this.currentUserId = userId;
-  }
-
   // Identidad ---------------------------------------------------------------
-  async getCurrentUser() {
-    return clone(this.users.find((u) => u.id === this.currentUserId) ?? null);
-  }
   async getUserById(id: string) {
     return clone(this.users.find((u) => u.id === id) ?? null);
   }
@@ -208,7 +208,8 @@ export class MockRepository implements Repository {
     return clone(
       this.modules
         .filter((m) => m.sessionId === sessionId)
-        .sort((a, b) => a.order - b.order),
+        .sort((a, b) => a.order - b.order)
+        .map(withoutContent),
     );
   }
   async createModule(module: Module) {
@@ -233,11 +234,9 @@ export class MockRepository implements Repository {
     return clone(
       this.modules
         .filter((m) => m.context === "tutorial")
-        .sort((a, b) => a.order - b.order),
+        .sort((a, b) => a.order - b.order)
+        .map(withoutContent),
     );
-  }
-  async getModule(moduleId: string) {
-    return clone(this.modules.find((m) => m.id === moduleId) ?? null);
   }
 
   // Inscripción / progreso --------------------------------------------------
@@ -293,9 +292,6 @@ export class MockRepository implements Repository {
   async listEvaluations(courseId: string) {
     return clone(this.evaluations.filter((e) => e.courseId === courseId));
   }
-  async getEvaluation(evaluationId: string) {
-    return clone(this.evaluations.find((e) => e.id === evaluationId) ?? null);
-  }
   async createEvaluation(evaluation: Evaluation) {
     const parsed = EvaluationSchema.parse(evaluation);
     if (parsed.courseId && !this.courses.some((c) => c.id === parsed.courseId)) {
@@ -332,13 +328,6 @@ export class MockRepository implements Repository {
     this.outcomes.push(parsed);
     return clone(parsed);
   }
-  async listQuestions(evaluationId: string) {
-    return clone(
-      this.questions
-        .filter((q) => q.evaluationId === evaluationId)
-        .sort((a, b) => a.order - b.order),
-    );
-  }
   async createQuestion(question: Question) {
     const parsed = QuestionSchema.parse(question);
     if (!this.evaluations.some((e) => e.id === parsed.evaluationId)) {
@@ -349,9 +338,6 @@ export class MockRepository implements Repository {
     }
     this.questions.push(parsed);
     return clone(parsed);
-  }
-  async listOptions(questionId: string) {
-    return clone(this.options.filter((o) => o.questionId === questionId));
   }
   async createOption(option: QuestionOption) {
     const parsed = QuestionOptionSchema.parse(option);
@@ -399,7 +385,7 @@ export class MockRepository implements Repository {
   async listAttemptsByEvaluation(evaluationId: string) {
     return clone(this.attempts.filter((a) => a.evaluationId === evaluationId));
   }
-  async createAttempt(attempt: Attempt) {
+  private async createAttempt(attempt: Attempt) {
     const parsed = AttemptSchema.parse(attempt);
     if (!this.users.some((u) => u.id === parsed.userId)) {
       fail(`Usuario no encontrado: ${parsed.userId}`);
@@ -413,21 +399,8 @@ export class MockRepository implements Repository {
     this.attempts.push(parsed);
     return clone(parsed);
   }
-  async saveAnswers(answers: Answer[]) {
-    const parsed = answers.map((a) => AnswerSchema.parse(a));
-    for (const a of parsed) {
-      if (!this.attempts.some((att) => att.id === a.attemptId)) {
-        fail(`Intento no encontrado: ${a.attemptId}`);
-      }
-    }
-    this.answers.push(...parsed);
-  }
   async listAnswers(attemptId: string) {
     return clone(this.answers.filter((a) => a.attemptId === attemptId));
-  }
-  async saveOutcomeScores(scores: OutcomeScore[]) {
-    const parsed = scores.map((s) => OutcomeScoreSchema.parse(s));
-    this.outcomeScores.push(...parsed);
   }
   async listOutcomeScores(attemptId: string) {
     return clone(this.outcomeScores.filter((s) => s.attemptId === attemptId));
@@ -471,11 +444,6 @@ export class MockRepository implements Repository {
   }
 
   // Comunidad -------------------------------------------------------------
-  async listCommunityPosts() {
-    return clone(
-      [...this.communityPosts].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
-    );
-  }
   async createCommunityPost(post: CommunityPost) {
     const parsed = CommunityPostSchema.parse(post);
     if (!this.users.some((u) => u.id === parsed.authorId)) {
@@ -486,9 +454,6 @@ export class MockRepository implements Repository {
     }
     this.communityPosts.push(parsed);
     return clone(parsed);
-  }
-  async listCommunityLikes(postId: string) {
-    return clone(this.communityLikes.filter((l) => l.postId === postId));
   }
   async toggleCommunityLike(postId: string, userId: string) {
     if (!this.communityPosts.some((p) => p.id === postId)) {
@@ -655,13 +620,124 @@ export class MockRepository implements Repository {
     return clone(events.sort((a, b) => a.date.localeCompare(b.date)));
   }
 
-  // Utilidades no-contrato (para tipos que las pantallas puedan necesitar)
-  async listAllModulesForCourse(courseId: string): Promise<Module[]> {
-    const sessionIds = this.sessions
-      .filter((s) => s.courseId === courseId)
-      .map((s) => s.id);
+  // Lecturas y escrituras en bloque (M10 · F4) -----------------------------
+  async getCourseStructures(courseIds: string[]): Promise<CourseStructure[]> {
+    return courseIds.flatMap((id) => {
+      const course = this.courses.find((c) => c.id === id);
+      if (!course) return [];
+      const sessions = this.sessions
+        .filter((s) => s.courseId === id)
+        .sort((a, b) => a.order - b.order);
+      const modulesBySession: Record<string, Module[]> = {};
+      for (const s of sessions) {
+        modulesBySession[s.id] = this.modules
+          .filter((m) => m.sessionId === s.id)
+          .sort((a, b) => a.order - b.order)
+          .map(withoutContent);
+      }
+      return [
+        clone({
+          course,
+          sessions,
+          modulesBySession,
+          evaluations: this.evaluations.filter((e) => e.courseId === id),
+        }),
+      ];
+    });
+  }
+  async getModuleContent(moduleId: string) {
+    const m = this.modules.find((x) => x.id === moduleId);
+    return m ? clone({ contentHtml: m.contentHtml, videoUrl: m.videoUrl }) : null;
+  }
+  async getEvaluationDetail(evaluationId: string): Promise<EvaluationDetail | null> {
+    const evaluation = this.evaluations.find((e) => e.id === evaluationId);
+    if (!evaluation) return null;
+    const questions = this.questions
+      .filter((q) => q.evaluationId === evaluationId)
+      .sort((a, b) => a.order - b.order);
+    const optionsByQuestion: Record<string, QuestionOption[]> = {};
+    for (const q of questions) {
+      optionsByQuestion[q.id] = this.options.filter((o) => o.questionId === q.id);
+    }
+    return clone({
+      evaluation,
+      questions,
+      optionsByQuestion,
+      outcomes: this.outcomes.filter((o) => o.evaluationId === evaluationId),
+    });
+  }
+  async listTutorialQuizzes() {
+    return clone(this.evaluations.filter((e) => e.kind === "tutorial_quiz"));
+  }
+  async listUsersByIds(ids: string[]) {
+    return clone(this.users.filter((u) => ids.includes(u.id)));
+  }
+  async listAllEnrollments() {
+    return clone(this.enrollments);
+  }
+  async listModuleProgressForUsers(userIds: string[]) {
+    return clone(this.progress.filter((p) => userIds.includes(p.userId)));
+  }
+  async listAttemptsByUser(userId: string) {
+    return clone(this.attempts.filter((a) => a.userId === userId));
+  }
+  async listAttemptsByEvaluations(evaluationIds: string[]) {
+    return clone(this.attempts.filter((a) => evaluationIds.includes(a.evaluationId)));
+  }
+  async listBonusAttemptsByUser(userId: string) {
+    const out: Record<string, number> = {};
+    for (const [key, count] of this.bonusAttempts) {
+      const [u, evaluationId] = key.split(":");
+      if (u === userId) out[evaluationId] = count;
+    }
+    return out;
+  }
+  async listBonusAttemptsByEvaluation(evaluationId: string) {
+    const out: Record<string, number> = {};
+    for (const [key, count] of this.bonusAttempts) {
+      const [userId, e] = key.split(":");
+      if (e === evaluationId) out[userId] = count;
+    }
+    return out;
+  }
+  async listAnswersByAttempts(attemptIds: string[]) {
+    return clone(this.answers.filter((a) => attemptIds.includes(a.attemptId)));
+  }
+  async listOutcomeScoresByAttempts(attemptIds: string[]) {
+    return clone(this.outcomeScores.filter((s) => attemptIds.includes(s.attemptId)));
+  }
+  async countUnreadMessages(userId: string) {
+    return this.messages.filter((m) => m.toUserId === userId && !m.read).length;
+  }
+  async listCommunityFeed(): Promise<CommunityPostWithStats[]> {
     return clone(
-      this.modules.filter((m) => m.sessionId && sessionIds.includes(m.sessionId)),
+      [...this.communityPosts]
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+        .map((post) => ({
+          post,
+          authorDisplayName: this.users.find((u) => u.id === post.authorId)?.displayName ?? "Alguien",
+          authorHidesName:
+            this.profiles.find((p) => p.userId === post.authorId)?.showNameInCommunity === false,
+          likeUserIds: this.communityLikes.filter((l) => l.postId === post.id).map((l) => l.userId),
+          replyCount: this.communityReplies.filter((r) => r.postId === post.id).length,
+        })),
     );
+  }
+  async listHiddenCommunityAuthorIds() {
+    return this.profiles.filter((p) => p.showNameInCommunity === false).map((p) => p.userId);
+  }
+  async submitAttempt(attempt: Attempt, answers: Answer[], outcomeScores: OutcomeScore[]) {
+    // Todo o nada, igual que la función de Postgres: se valida antes de escribir.
+    const parsedAnswers = answers.map((a) => AnswerSchema.parse(a));
+    const parsedScores = outcomeScores.map((s) => OutcomeScoreSchema.parse(s));
+    if (parsedAnswers.some((a) => a.attemptId !== attempt.id)) {
+      fail(`Respuestas de otro intento en el envío de ${attempt.id}`);
+    }
+    await this.createAttempt(attempt);
+    this.answers.push(...parsedAnswers);
+    this.outcomeScores.push(...parsedScores);
+  }
+  async sendMessages(messages: Message[]) {
+    for (const m of messages) await this.sendMessage(m);
   }
 }

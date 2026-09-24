@@ -3,6 +3,10 @@
  * por estudiante, desglose por RA, la respuesta exacta a cada pregunta (para
  * el CSV y la revisión de respuestas abiertas), y estado de intentos (para
  * el botón de reabrir — spec §5.11).
+ *
+ * M10 · F4: dos tandas de lecturas en bloque, sin importar cuántos
+ * estudiantes o preguntas haya (antes: una consulta por pregunta y cinco
+ * por estudiante).
  */
 
 import type { Repository } from "@/lib/data/repository";
@@ -15,6 +19,7 @@ import type {
   User,
 } from "@/lib/domain/types";
 import { attemptGate } from "@/lib/logic/attempts";
+import { gradesToCsv, type GradeRow } from "@/lib/logic/grades-csv";
 
 export interface StudentGradeRow {
   student: User;
@@ -64,45 +69,52 @@ export async function buildGradesView(
   evaluationId: string,
   nowIso: string,
 ): Promise<GradesVM> {
-  const evaluation = await repo.getEvaluation(evaluationId);
-  if (!evaluation) throw new Error(`Evaluación no encontrada: ${evaluationId}`);
+  const [detail, enrollments, allAttempts, bonusByUser] = await Promise.all([
+    repo.getEvaluationDetail(evaluationId),
+    repo.listEnrollmentsByCourse(courseId),
+    repo.listAttemptsByEvaluation(evaluationId),
+    repo.listBonusAttemptsByEvaluation(evaluationId),
+  ]);
+  if (!detail) throw new Error(`Evaluación no encontrada: ${evaluationId}`);
+  const { evaluation, questions, optionsByQuestion, outcomes } = detail;
 
-  const outcomes = await repo.listOutcomes(evaluationId);
   const outcomeCodeById = new Map(outcomes.map((o) => [o.id, o.code]));
-  const questions = await repo.listQuestions(evaluationId);
   const openQuestions = questions.filter((q) => q.type === "open");
-
-  const optionsByQuestion: Record<string, QuestionOption[]> = {};
-  for (const q of questions) {
-    optionsByQuestion[q.id] = await repo.listOptions(q.id);
-  }
   const questionLabels = questions.map((q, i) => `P${i + 1}: ${q.text}`);
 
-  const enrollments = await repo.listEnrollmentsByCourse(courseId);
-  const rows: StudentGradeRow[] = [];
+  const bestAttemptOf = (userId: string) =>
+    allAttempts
+      .filter((a) => a.userId === userId && a.status === "submitted" && a.score !== undefined)
+      .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))[0];
+  const bestIds = enrollments.map((e) => bestAttemptOf(e.userId)?.id).filter((id): id is string => !!id);
 
+  const [students, bestScores, bestAnswers] = await Promise.all([
+    repo.listUsersByIds(enrollments.map((e) => e.userId)),
+    repo.listOutcomeScoresByAttempts(bestIds),
+    repo.listAnswersByAttempts(bestIds),
+  ]);
+  const studentById = new Map(students.map((s) => [s.id, s]));
+
+  const rows: StudentGradeRow[] = [];
   for (const enrollment of enrollments) {
-    const student = await repo.getUserById(enrollment.userId);
+    const student = studentById.get(enrollment.userId);
     if (!student) continue;
 
-    const attempts = await repo.listAttempts(enrollment.userId, evaluationId);
+    const attempts = allAttempts.filter((a) => a.userId === enrollment.userId);
     const submitted = attempts.filter((a) => a.status === "submitted");
-    const best = submitted
-      .filter((a) => a.score !== undefined)
-      .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))[0];
+    const best = bestAttemptOf(enrollment.userId);
 
     const outcomeAchieved: Record<string, number> = {};
     const openAnswers: Array<{ question: string; answer: string }> = [];
     let questionAnswers: string[] = questions.map(() => "");
 
     if (best) {
-      const scores = await repo.listOutcomeScores(best.id);
-      for (const s of scores) {
+      for (const s of bestScores.filter((x) => x.attemptId === best.id)) {
         const code = outcomeCodeById.get(s.outcomeId);
         if (code) outcomeAchieved[code] = s.achieved;
       }
 
-      const answers = await repo.listAnswers(best.id);
+      const answers = bestAnswers.filter((a) => a.attemptId === best.id);
       questionAnswers = questions.map((q) =>
         formatAnswer(
           q,
@@ -117,7 +129,7 @@ export async function buildGradesView(
       }
     }
 
-    const bonus = await repo.getBonusAttempts(enrollment.userId, evaluationId);
+    const bonus = bonusByUser[enrollment.userId] ?? 0;
     const gate = attemptGate({ evaluation, attempts, nowIso, bonusAttempts: bonus });
     const passed =
       evaluation.passingScore !== undefined &&
@@ -136,4 +148,28 @@ export async function buildGradesView(
   }
 
   return { evaluation, outcomes, questionLabels, rows };
+}
+
+/**
+ * CSV de calificaciones de una evaluación (nota, RA y respuesta por
+ * pregunta). Lo arma el servidor (`/api/teacher/grades/export`), no la
+ * pantalla. Lleva BOM UTF-8 para que Excel muestre bien tildes y eñes.
+ */
+export function gradesCsvFromView(vm: GradesVM): { csv: string; filename: string } {
+  const outcomeCodes = vm.outcomes.map((o) => o.code);
+  const outcomeExpected = Object.fromEntries(vm.outcomes.map((o) => [o.code, o.expectedLevel]));
+  const rows: GradeRow[] = vm.rows.map((r) => ({
+    studentName: r.student.displayName,
+    email: r.student.email,
+    evaluationTitle: vm.evaluation.title,
+    score: r.bestScore ?? null,
+    outcomeAchieved: r.outcomeAchieved,
+    outcomeExpected,
+    questionAnswers: r.questionAnswers,
+  }));
+  const safeTitle = vm.evaluation.title.replace(/[^\p{L}\p{N}]+/gu, "_").replace(/^_|_$/g, "") || "calificaciones";
+  return {
+    csv: "﻿" + gradesToCsv(rows, outcomeCodes, vm.questionLabels),
+    filename: `${safeTitle}.csv`,
+  };
 }

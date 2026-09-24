@@ -1,22 +1,20 @@
 "use client";
 
 /**
- * Autenticación.
+ * Autenticación (Supabase Auth).
  *
- * Bifurca internamente según `isSupabaseMode()` (ver `src/lib/data/dataSource.ts`)
- * para que el resto de la app (`useAuth()`, `useRequireAuth()`, los headers de
- * dashboard que llaman `logout()`) no necesite saber cuál de las dos fuentes
- * está activa:
+ * La sesión real vive en cookies (`@supabase/ssr`). Este provider escucha
+ * `onAuthStateChange` — que al suscribirse emite `INITIAL_SESSION` con la
+ * sesión actual — y arma el `User` desde la fila de `profiles`. Es la única
+ * fuente: no hay un `getSession()` inicial aparte que duplique la consulta.
  *
- * - **Mock** (por defecto): el "usuario logueado" vive en memoria del
- *   singleton `MockRepository` — comportamiento sin cambios respecto al MVP
- *   original. `loginAs(userId)` es la única forma de "entrar".
- * - **Supabase**: la sesión real vive en cookies (`@supabase/ssr`); este
- *   provider se suscribe a `onAuthStateChange` y arma el `User` a partir de
- *   la fila de `profiles`. El login real (OTP/Google) ya no pasa por
- *   `loginAs` — las páginas de login llaman directo al cliente de Supabase
- *   (ver `login/page.tsx`, `login/otp/page.tsx`) y este contexto reacciona
- *   solo a los cambios de sesión.
+ * Dos reglas (M10 · F2):
+ * - `loading` vale true mientras se resuelve el perfil de una sesión nueva,
+ *   así `useRequireAuth` nunca ve "sin usuario" entre el código OTP y la
+ *   carga del perfil (antes eso podía devolver a /login).
+ * - Las consultas a Supabase se difieren fuera del callback de
+ *   `onAuthStateChange`: la documentación de Supabase advierte que llamarlas
+ *   dentro puede bloquear el lock de sesión.
  */
 
 import {
@@ -25,18 +23,16 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import type { User } from "@/lib/domain/types";
-import { getMockRepository } from "@/lib/data";
-import { isSupabaseMode } from "@/lib/data/dataSource";
 import { createClient } from "@/lib/supabase/client";
 
 interface AuthValue {
   user: User | null;
   loading: boolean;
-  /** Solo tiene efecto en modo mock — ver doc de arriba. */
-  loginAs: (userId: string) => Promise<void>;
   logout: () => void;
   /** Vuelve a leer el usuario actual sin recargar la página — para reflejar un cambio (nombre, foto) hecho mientras ya se está usando la app. */
   refreshUser: () => Promise<void>;
@@ -64,141 +60,71 @@ function userFromProfileRow(row: ProfileRow): User {
   };
 }
 
-function useMockAuth(): AuthValue {
+export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-
-  const load = useCallback(async () => {
-    const repo = getMockRepository();
-    const u = await repo.getCurrentUser();
-    setUser(u);
-    setLoading(false);
-  }, []);
-
-  useEffect(() => {
-    // Ambos hooks (mock/Supabase) se llaman siempre para respetar las reglas
-    // de hooks — este solo hace trabajo real cuando el modo activo es mock.
-    if (isSupabaseMode()) {
-      setLoading(false);
-      return;
-    }
-    void load();
-  }, [load]);
-
-  const loginAs = useCallback(
-    async (userId: string) => {
-      getMockRepository().setCurrentUser(userId);
-      await load();
-    },
-    [load],
-  );
-
-  const logout = useCallback(() => {
-    getMockRepository().setCurrentUser(null);
-    setUser(null);
-  }, []);
-
-  return useMemo(
-    () => ({ user, loading, loginAs, logout, refreshUser: load }),
-    [user, loading, loginAs, logout, load],
-  );
-}
-
-function useSupabaseAuth(): AuthValue {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  // Perezoso y condicionado al modo: `AuthProvider` llama este hook siempre
-  // (reglas de hooks), incluso en modo mock o durante el prerender de
-  // `next build` — construir el cliente ahí sin este guard revienta el build
-  // en cuanto faltan `NEXT_PUBLIC_SUPABASE_URL`/`ANON_KEY` (p. ej. en Vercel
-  // sin esas env vars configuradas), aunque la app esté en modo mock.
-  const supabase = useMemo(() => (isSupabaseMode() ? createClient() : null), []);
+  const supabase = useMemo(() => createClient(), []);
+  const queryClient = useQueryClient();
+  /** Usuario cuya sesión ya se está atendiendo — evita recargar el perfil en cada refresco de token. */
+  const sessionUserId = useRef<string | null>(null);
 
   const loadProfile = useCallback(
     async (userId: string) => {
-      if (!supabase) return;
       const { data, error } = await supabase
         .from("profiles")
         .select("id, email, role, display_name, avatar_url, last_seen")
         .eq("id", userId)
         .single();
-      if (error || !data) {
-        setUser(null);
-        return;
-      }
-      setUser(userFromProfileRow(data as ProfileRow));
+      // Si mientras tanto cambió la sesión (logout, otra cuenta), descartar.
+      if (sessionUserId.current !== userId) return;
+      setUser(error || !data ? null : userFromProfileRow(data as ProfileRow));
     },
     [supabase],
   );
 
   useEffect(() => {
-    // Ambos hooks (mock/Supabase) se llaman siempre para respetar las reglas
-    // de hooks — este solo hace trabajo real (llamadas de red) cuando el
-    // modo activo es Supabase.
-    if (!supabase) {
-      setLoading(false);
-      return;
-    }
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      const nextId = session?.user?.id ?? null;
 
-    let active = true;
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!active) return;
-      if (session?.user) {
-        void loadProfile(session.user.id).finally(() => active && setLoading(false));
-      } else {
+      if (!nextId) {
+        sessionUserId.current = null;
+        queryClient.clear();
         setUser(null);
         setLoading(false);
+        return;
       }
+      // TOKEN_REFRESHED y similares del mismo usuario: el perfil no cambió.
+      if (nextId === sessionUserId.current && event !== "USER_UPDATED") return;
+
+      // Otra cuenta en la misma pestaña: nada de la caché anterior le pertenece.
+      if (sessionUserId.current && sessionUserId.current !== nextId) queryClient.clear();
+      sessionUserId.current = nextId;
+      setLoading(true);
+      setTimeout(() => {
+        void loadProfile(nextId).finally(() => {
+          if (sessionUserId.current === nextId) setLoading(false);
+        });
+      }, 0);
     });
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        void loadProfile(session.user.id);
-      } else {
-        setUser(null);
-      }
-    });
-
-    return () => {
-      active = false;
-      sub.subscription.unsubscribe();
-    };
-  }, [supabase, loadProfile]);
-
-  const loginAs = useCallback(async () => {
-    // No aplica en modo Supabase: el login real pasa por
-    // `supabase.auth.signInWithOtp/verifyOtp/signInWithOAuth` directamente
-    // desde las páginas de login, no por aquí.
-    console.warn("loginAs() no tiene efecto en modo Supabase.");
-  }, []);
+    return () => sub.subscription.unsubscribe();
+  }, [supabase, loadProfile, queryClient]);
 
   const logout = useCallback(() => {
-    void supabase?.auth.signOut();
+    sessionUserId.current = null;
+    queryClient.clear();
     setUser(null);
-  }, [supabase]);
+    void supabase.auth.signOut();
+  }, [supabase, queryClient]);
 
   const refreshUser = useCallback(async () => {
-    if (!supabase) return;
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    if (session?.user) await loadProfile(session.user.id);
-  }, [supabase, loadProfile]);
+    if (sessionUserId.current) await loadProfile(sessionUserId.current);
+  }, [loadProfile]);
 
-  return useMemo(
-    () => ({ user, loading, loginAs, logout, refreshUser }),
-    [user, loading, loginAs, logout, refreshUser],
+  const value = useMemo(
+    () => ({ user, loading, logout, refreshUser }),
+    [user, loading, logout, refreshUser],
   );
-}
-
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  // El modo no cambia en caliente (viene de una env var evaluada en build) —
-  // llamar siempre ambos hooks en el mismo orden es válido para las reglas
-  // de hooks, solo se usa el resultado del modo activo.
-  const mockAuth = useMockAuth();
-  const supabaseAuth = useSupabaseAuth();
-  const value = isSupabaseMode() ? supabaseAuth : mockAuth;
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

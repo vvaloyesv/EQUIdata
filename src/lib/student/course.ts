@@ -3,15 +3,23 @@
  *
  * Aplica la doble condición de desbloqueo (fecha + quiz resuelto) sesión por
  * sesión, usando la lógica pura de src/lib/logic. Toda decisión de negocio
- * vive ahí; este módulo solo orquesta las llamadas al repositorio.
+ * vive ahí; este módulo solo orquesta las lecturas del repositorio.
+ *
+ * M10 · F4: las lecturas se hacen en bloque y en paralelo (estructura del
+ * curso, progreso, intentos e intentos extra de la persona: 4 consultas, sin
+ * importar cuántas sesiones tenga el curso). El armado es una función pura
+ * (`courseViewFrom`) que reutilizan el dashboard, Certificaciones y el panel
+ * del profesor sin volver a consultar.
  */
 
 import type { Repository } from "@/lib/data/repository";
 import type {
   Attempt,
   Course,
+  CourseStructure,
   Evaluation,
   Module,
+  ModuleProgress,
   Session,
   SessionUnlockState,
 } from "@/lib/domain/types";
@@ -50,64 +58,90 @@ export interface CourseVM {
   certificateReason?: string;
 }
 
+/** Ids de módulos completados a partir del progreso de una persona. */
+export function completedModuleIdsOf(progress: ModuleProgress[]): Set<string> {
+  return new Set(progress.filter((p) => p.completed).map((p) => p.moduleId));
+}
+
+/** Total de módulos del curso y cuántos de ellos están en `completedIds`. */
+export function courseCompletion(
+  structure: CourseStructure,
+  completedIds: Set<string>,
+): { total: number; completed: number } {
+  let total = 0;
+  let completed = 0;
+  for (const s of structure.sessions) {
+    const modules = structure.modulesBySession[s.id] ?? [];
+    total += modules.length;
+    completed += modules.filter((m) => completedIds.has(m.id)).length;
+  }
+  return { total, completed };
+}
+
 export async function buildCourseView(
   repo: Repository,
   userId: string,
   courseId: string,
   nowIso: string,
 ): Promise<CourseVM> {
-  const course = await repo.getCourse(courseId);
-  if (!course) throw new Error(`Curso no encontrado: ${courseId}`);
+  const [structures, progress, attempts, bonusByEvaluation] = await Promise.all([
+    repo.getCourseStructures([courseId]),
+    repo.listModuleProgress(userId),
+    repo.listAttemptsByUser(userId),
+    repo.listBonusAttemptsByUser(userId),
+  ]);
+  const structure = structures[0];
+  if (!structure) throw new Error(`Curso no encontrado: ${courseId}`);
+  return courseViewFrom(structure, progress, attempts, bonusByEvaluation, nowIso);
+}
 
-  const sessions = await repo.listSessions(courseId);
-  const evaluations = await repo.listEvaluations(courseId);
-  const progress = await repo.listModuleProgress(userId);
-  const completedIds = new Set(
-    progress.filter((p) => p.completed).map((p) => p.moduleId),
-  );
+/**
+ * Arma el view-model del curso con datos ya cargados — sin consultas.
+ * `attempts` y `bonusByEvaluation` son los de la persona (pueden incluir
+ * otras evaluaciones; se filtran aquí).
+ */
+export function courseViewFrom(
+  structure: CourseStructure,
+  progress: ModuleProgress[],
+  attempts: Attempt[],
+  bonusByEvaluation: Record<string, number>,
+  nowIso: string,
+): CourseVM {
+  const { course, sessions, modulesBySession, evaluations } = structure;
+  const completedIds = completedModuleIdsOf(progress);
+  const attemptsFor = (evaluationId: string) =>
+    attempts.filter((a) => a.evaluationId === evaluationId);
+  const bonusFor = (evaluationId: string) => bonusByEvaluation[evaluationId] ?? 0;
 
-  const diagnosticInitial = evaluations.find(
-    (e) => e.kind === "diagnostic_initial",
-  );
+  const diagnosticInitial = evaluations.find((e) => e.kind === "diagnostic_initial");
   const diagnosticFinal = evaluations.find((e) => e.kind === "diagnostic_final");
   const interestOnboarding = evaluations.find((e) => e.kind === "interest_onboarding");
 
-  let diagnosticDone = true;
-  if (diagnosticInitial) {
-    const attempts = await repo.listAttempts(userId, diagnosticInitial.id);
-    diagnosticDone = attempts.some((a) => a.status === "submitted");
-  }
-
-  let interestOnboardingDone = false;
-  if (interestOnboarding) {
-    const attempts = await repo.listAttempts(userId, interestOnboarding.id);
-    interestOnboardingDone = attempts.some((a) => a.status === "submitted");
-  }
+  const diagnosticDone = diagnosticInitial
+    ? attemptsFor(diagnosticInitial.id).some((a) => a.status === "submitted")
+    : true;
+  const interestOnboardingDone = interestOnboarding
+    ? attemptsFor(interestOnboarding.id).some((a) => a.status === "submitted")
+    : false;
 
   const quizBySession = new Map<string, Evaluation>();
   for (const e of evaluations) {
     if (e.kind === "quiz" && e.sessionId) quizBySession.set(e.sessionId, e);
   }
 
-  const sessionVMs: SessionVM[] = [];
-
-  for (let i = 0; i < sessions.length; i++) {
-    const session = sessions[i];
-    const modules = await repo.listModules(session.id);
-
+  const sessionVMs: SessionVM[] = sessions.map((session, i) => {
+    const modules = modulesBySession[session.id] ?? [];
     const isFirst = i === 0;
+
     let prevQuiz;
     if (!isFirst) {
-      const prevSession = sessions[i - 1];
-      const prevQuizEval = quizBySession.get(prevSession.id);
+      const prevQuizEval = quizBySession.get(sessions[i - 1].id);
       if (prevQuizEval) {
-        const prevAttempts = await repo.listAttempts(userId, prevQuizEval.id);
-        const prevBonus = await repo.getBonusAttempts(userId, prevQuizEval.id);
         const resolved = isQuizResolved({
           evaluation: prevQuizEval,
-          attempts: prevAttempts,
+          attempts: attemptsFor(prevQuizEval.id),
           nowIso,
-          bonusAttempts: prevBonus,
+          bonusAttempts: bonusFor(prevQuizEval.id),
         });
         prevQuiz = {
           exists: true,
@@ -119,16 +153,8 @@ export async function buildCourseView(
       }
     }
 
-    const unlock = sessionUnlockState({
-      session,
-      isFirst,
-      prevQuiz,
-      diagnosticDone,
-      nowIso,
-    });
-
-    const allModulesDone =
-      modules.length > 0 && modules.every((m) => completedIds.has(m.id));
+    const unlock = sessionUnlockState({ session, isFirst, prevQuiz, diagnosticDone, nowIso });
+    const allModulesDone = modules.length > 0 && modules.every((m) => completedIds.has(m.id));
 
     // El quiz de la propia sesión también cuenta para marcarla "completada":
     // si quedó pendiente (con intentos disponibles y sin aprobar), la sesión
@@ -139,20 +165,14 @@ export async function buildCourseView(
     let quizGate: AttemptGate | undefined;
     let quizResolved = true;
     if (quizEvaluation) {
-      const quizAttempts = await repo.listAttempts(userId, quizEvaluation.id);
-      const bonus = await repo.getBonusAttempts(userId, quizEvaluation.id);
-      quizGate = attemptGate({
+      const quizInput = {
         evaluation: quizEvaluation,
-        attempts: quizAttempts,
+        attempts: attemptsFor(quizEvaluation.id),
         nowIso,
-        bonusAttempts: bonus,
-      });
-      const resolved = isQuizResolved({
-        evaluation: quizEvaluation,
-        attempts: quizAttempts,
-        nowIso,
-        bonusAttempts: bonus,
-      });
+        bonusAttempts: bonusFor(quizEvaluation.id),
+      };
+      quizGate = attemptGate(quizInput);
+      const resolved = isQuizResolved(quizInput);
       quizResolved = resolved.passed || resolved.attemptsExhausted;
     }
 
@@ -162,7 +182,7 @@ export async function buildCourseView(
         ? "completed"
         : "in_progress";
 
-    sessionVMs.push({
+    return {
       session,
       modules,
       completedModuleIds: completedIds,
@@ -170,8 +190,8 @@ export async function buildCourseView(
       unlock,
       quizEvaluation,
       quizGate,
-    });
-  }
+    };
+  });
 
   // "completed" ya exige módulos Y quiz resueltos (ver arriba), así que
   // "in_progress" es exactamente "todavía hay algo que hacer aquí".
@@ -186,20 +206,14 @@ export async function buildCourseView(
   );
 
   let certificateEligible = false;
-  let certificateReason: string | undefined =
-    "Este curso no tiene diagnóstico final.";
+  let certificateReason: string | undefined = "Este curso no tiene diagnóstico final.";
   if (diagnosticFinal) {
-    const totalModules = sessionVMs.reduce((a, s) => a + s.modules.length, 0);
-    const completedModules = sessionVMs.reduce(
-      (a, s) => a + s.modules.filter((m) => completedIds.has(m.id)).length,
-      0,
-    );
-    const finalAttempts = await repo.listAttempts(userId, diagnosticFinal.id);
+    const { total, completed } = courseCompletion(structure, completedIds);
     const elig = isCertificateEligible({
-      finalBestScore: bestAttemptScore(finalAttempts),
+      finalBestScore: bestAttemptScore(attemptsFor(diagnosticFinal.id)),
       finalPassingScore: diagnosticFinal.passingScore ?? 100,
-      totalModules,
-      completedModules,
+      totalModules: total,
+      completedModules: completed,
     });
     certificateEligible = elig.eligible;
     certificateReason = elig.reasonLabel;
@@ -217,6 +231,21 @@ export async function buildCourseView(
     finalDiagnosticAvailable,
     certificateEligible,
     certificateReason,
+  };
+}
+
+/**
+ * La misma vista con un módulo más marcado como completado — para
+ * actualizar la pantalla al instante al pulsar "completar", mientras se
+ * confirma con el servidor (los estados de sesión se recalculan al refrescar).
+ */
+export function withModuleCompleted(vm: CourseVM, moduleId: string): CourseVM {
+  const first = vm.sessions[0]?.completedModuleIds;
+  if (!first || first.has(moduleId)) return vm;
+  const completed = new Set(first).add(moduleId);
+  return {
+    ...vm,
+    sessions: vm.sessions.map((s) => ({ ...s, completedModuleIds: completed })),
   };
 }
 
@@ -256,20 +285,13 @@ export async function getCourseCompletion(
   userId: string,
   courseId: string,
 ): Promise<{ total: number; completed: number }> {
-  const sessions = await repo.listSessions(courseId);
-  const progress = await repo.listModuleProgress(userId);
-  const completedIds = new Set(
-    progress.filter((p) => p.completed).map((p) => p.moduleId),
-  );
-
-  let total = 0;
-  let completed = 0;
-  for (const s of sessions) {
-    const modules = await repo.listModules(s.id);
-    total += modules.length;
-    completed += modules.filter((m) => completedIds.has(m.id)).length;
-  }
-  return { total, completed };
+  const [structures, progress] = await Promise.all([
+    repo.getCourseStructures([courseId]),
+    repo.listModuleProgress(userId),
+  ]);
+  const structure = structures[0];
+  if (!structure) return { total: 0, completed: 0 };
+  return courseCompletion(structure, completedModuleIdsOf(progress));
 }
 
 /** Cursos publicados en los que la persona todavía no está inscrita ("cursos disponibles"). */

@@ -1,4 +1,6 @@
+import { notFound } from "next/navigation";
 import { Calendar } from "lucide-react";
+import { features } from "@/lib/features";
 import { Card } from "@/components/ui/Card";
 import { Label } from "@/components/ui/Label";
 import { Badge } from "@/components/ui/Badge";
@@ -42,6 +44,8 @@ const PROJECTS = [
 ];
 
 export default function ProjectsPage() {
+  // Oculta durante el piloto (M10 · F6): una fachada se ve como algo roto.
+  if (!features.projects) notFound();
   return (
     <div className="mx-auto max-w-5xl px-8 py-8">
       <Label>Aprender construyendo</Label>

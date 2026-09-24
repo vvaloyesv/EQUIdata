@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Video, FileCode2, ClipboardCheck } from "lucide-react";
-import { useAsync } from "@/lib/useAsync";
+import { useRefresh, useRepoQuery } from "@/lib/query";
 import { getRepository } from "@/lib/data";
 import { buildTeacherTutorialsView } from "@/lib/teacher/tutorials";
 import { genId } from "@/lib/teacher/course";
@@ -18,12 +18,11 @@ import type { Module, ModuleType } from "@/lib/domain/types";
 
 export default function TeacherTutorialsPage() {
   const router = useRouter();
-  const [reloadKey, setReloadKey] = useState(0);
+  const refresh = useRefresh();
   const [addingTutorial, setAddingTutorial] = useState(false);
 
-  const { data: tutorials, loading } = useAsync(
-    () => buildTeacherTutorialsView(getRepository()),
-    [reloadKey],
+  const { data: tutorials, loading } = useRepoQuery(["teacher-tutorials"], () =>
+    buildTeacherTutorialsView(getRepository()),
   );
 
   if (loading || !tutorials) {
@@ -52,7 +51,7 @@ export default function TeacherTutorialsPage() {
       videoUrl: data.videoUrl ? toEmbedVideoUrl(data.videoUrl) : data.videoUrl,
     });
     setAddingTutorial(false);
-    setReloadKey((k) => k + 1);
+    await refresh();
   }
 
   async function createQuiz(tutorial: Module) {

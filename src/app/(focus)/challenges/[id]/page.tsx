@@ -3,7 +3,7 @@
 import { use, useCallback, useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { useAsync } from "@/lib/useAsync";
+import { queryKeys, useRefresh, useRepoQuery } from "@/lib/query";
 import { getRepository } from "@/lib/data";
 import { buildChallengesView } from "@/lib/student/challenges";
 import { ChallengeViewer } from "@/components/student/ChallengeViewer";
@@ -19,18 +19,21 @@ export default function ChallengeDetailPage({
 }) {
   const { id } = use(params);
   const { user } = useAuth();
-  const [reloadKey, setReloadKey] = useState(0);
+  const refresh = useRefresh();
   const [attemptKey, setAttemptKey] = useState(0);
   const [justCompleted, setJustCompleted] = useState<{
     score: number;
     total: number;
   } | null>(null);
+  const userId = user?.id ?? "";
 
-  const { data, loading } = useAsync(async () => {
-    if (!user) return null;
-    const views = await buildChallengesView(getRepository(), user.id);
-    return views.find((v) => v.challenge.id === id) ?? null;
-  }, [id, user?.id, reloadKey]);
+  // Misma lectura que la lista de Retos: si se viene de ahí, aparece al instante.
+  const { data: views, loading } = useRepoQuery(
+    queryKeys.challenges(userId),
+    () => buildChallengesView(getRepository(), userId),
+    { enabled: !!user },
+  );
+  const data = views?.find((v) => v.challenge.id === id) ?? null;
 
   const handleResult = useCallback(
     async (score: number, total: number) => {
@@ -44,9 +47,9 @@ export default function ChallengeDetailPage({
         completedAt: new Date().toISOString(),
       });
       setJustCompleted({ score, total });
-      setReloadKey((k) => k + 1);
+      await refresh();
     },
-    [id, user],
+    [id, user, refresh],
   );
 
   function retry() {

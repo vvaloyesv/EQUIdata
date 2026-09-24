@@ -3,7 +3,7 @@
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
-import { useAsync } from "@/lib/useAsync";
+import { useRefresh, useRepoQuery } from "@/lib/query";
 import { getRepository } from "@/lib/data";
 import { buildEvaluationView, canSubmitAttempt } from "@/lib/student/evaluation";
 import { gradeAttempt } from "@/lib/logic/grading";
@@ -35,19 +35,18 @@ export default function TutorialEvalPage({
 }) {
   const { id: tutorialId, evalId } = use(params);
   const { user } = useAuth();
-  const [reloadKey, setReloadKey] = useState(0);
+  const refresh = useRefresh();
+  const userId = user?.id ?? "";
   const [answers, setAnswers] = useState<Record<string, DraftAnswer>>({});
   const [result, setResult] = useState<SubmitResult | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [unansweredIds, setUnansweredIds] = useState<Set<string>>(new Set());
   const [started, setStarted] = useState(false);
 
-  const { data: vm, loading } = useAsync(
-    () =>
-      user
-        ? buildEvaluationView(getRepository(), user.id, evalId, new Date().toISOString())
-        : Promise.resolve(null),
-    [user?.id, evalId, reloadKey],
+  const { data: vm, loading } = useRepoQuery(
+    ["evaluation-view", userId, evalId],
+    () => buildEvaluationView(getRepository(), userId, evalId, new Date().toISOString()),
+    { enabled: !!user },
   );
 
   useEffect(() => {
@@ -93,7 +92,7 @@ export default function TutorialEvalPage({
     );
     if (!stillAllowed) {
       setSubmitting(false);
-      setReloadKey((k) => k + 1);
+      await refresh();
       return;
     }
 
@@ -121,20 +120,24 @@ export default function TutorialEvalPage({
     });
 
     const nowIso = new Date().toISOString();
-    await repo.createAttempt({
-      id: attemptId,
-      userId: user.id,
-      evaluationId: evaluation.id,
-      startedAt: nowIso,
-      submittedAt: nowIso,
-      score: graded.score,
-      status: "submitted",
-    });
-    await repo.saveAnswers(graded.gradedAnswers);
+    // Intento + respuestas, todo o nada (el quiz de tutorial no tiene RA).
+    await repo.submitAttempt(
+      {
+        id: attemptId,
+        userId: user.id,
+        evaluationId: evaluation.id,
+        startedAt: nowIso,
+        submittedAt: nowIso,
+        score: graded.score,
+        status: "submitted",
+      },
+      graded.gradedAnswers,
+      [],
+    );
 
     setResult({ score: graded.score, outcomeScores: graded.outcomeScores });
     setSubmitting(false);
-    setReloadKey((k) => k + 1);
+    await refresh();
   }
 
   const passed =

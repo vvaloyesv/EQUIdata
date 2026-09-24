@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { CreditCard, User, Briefcase, LayoutGrid } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { useAsync } from "@/lib/useAsync";
+import { features } from "@/lib/features";
+import { queryKeys, useRefresh, useRepoQuery } from "@/lib/query";
 import { getRepository } from "@/lib/data";
 import { CARGO_OPTIONS } from "@/lib/brand/lists";
 import {
@@ -24,19 +25,19 @@ type PrivacyKey =
 
 export default function SettingsPage() {
   const { user } = useAuth();
-  const [reloadKey, setReloadKey] = useState(0);
+  const refresh = useRefresh();
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [documentError, setDocumentError] = useState<string>();
+  const userId = user?.id ?? "";
 
-  const { data: areaOptions } = useAsync(
-    () => getRepository().listAreaOptions(),
-    [],
+  const { data: areaOptions } = useRepoQuery(queryKeys.areaOptions(), () =>
+    getRepository().listAreaOptions(),
   );
-  const { data: profile, loading } = useAsync(
-    () =>
-      user ? getRepository().getStudentProfile(user.id) : Promise.resolve(null),
-    [user?.id, reloadKey],
+  const { data: profile, loading } = useRepoQuery(
+    queryKeys.studentProfile(userId),
+    () => getRepository().getStudentProfile(userId),
+    { enabled: !!user },
   );
 
   async function submitAccount(e: React.FormEvent<HTMLFormElement>) {
@@ -66,13 +67,13 @@ export default function SettingsPage() {
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
-    setReloadKey((k) => k + 1);
+    await refresh();
   }
 
   async function togglePref(key: PrivacyKey, next: boolean) {
     if (!profile) return;
     await getRepository().saveStudentProfile({ ...profile, [key]: next });
-    setReloadKey((k) => k + 1);
+    await refresh();
   }
 
   if (loading || !profile) {
@@ -195,12 +196,14 @@ export default function SettingsPage() {
             checked={profile.showNameInCommunity !== false}
             onChange={(v) => togglePref("showNameInCommunity", v)}
           />
-          <SettingRow
-            title="Avisarme de mensajes sin leer"
-            description="Muestra el contador en Mensajes y la campana del dashboard."
-            checked={profile.notifyUnreadMessages !== false}
-            onChange={(v) => togglePref("notifyUnreadMessages", v)}
-          />
+          {features.messages && (
+            <SettingRow
+              title="Avisarme de mensajes sin leer"
+              description="Muestra el contador en Mensajes y la campana del dashboard."
+              checked={profile.notifyUnreadMessages !== false}
+              onChange={(v) => togglePref("notifyUnreadMessages", v)}
+            />
+          )}
           <SettingRow
             title="Recordarme mi racha"
             description="Muestra un aviso en el dashboard cuando llevas días seguidos activa."

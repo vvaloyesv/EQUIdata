@@ -19,11 +19,24 @@ export interface GradeRow {
   questionAnswers: string[];
 }
 
+/**
+ * Inyección de fórmulas (CSV injection): Excel, Sheets y LibreOffice ejecutan
+ * como fórmula una celda que empieza por = + - @ (o tabulador / retorno). Las
+ * respuestas abiertas las escribe cada estudiante, así que un
+ * `=HYPERLINK(...)` se ejecutaría en el computador de la profesora al abrir
+ * el archivo. Se antepone un apóstrofo, que la hoja muestra como texto.
+ * Los números propios (notas, %) nunca empiezan así, así que no se tocan.
+ */
+function neutralizeFormula(value: string): string {
+  return /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
+}
+
 function escapeCsv(value: string): string {
-  if (/[",\n]/.test(value)) {
-    return `"${value.replace(/"/g, '""')}"`;
+  const safe = neutralizeFormula(value);
+  if (/[",\r\n]/.test(safe)) {
+    return `"${safe.replace(/"/g, '""')}"`;
   }
-  return value;
+  return safe;
 }
 
 export function gradesToCsv(

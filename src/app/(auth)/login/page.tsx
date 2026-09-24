@@ -4,219 +4,112 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Mail } from "lucide-react";
 import { AuthShell } from "@/components/auth/AuthShell";
+import { DevQuickLogin } from "@/components/auth/DevQuickLogin";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
-import { Badge } from "@/components/ui/Badge";
-import { useAuth } from "@/context/AuthContext";
-import { isSupabaseMode } from "@/lib/data/dataSource";
 import { createClient } from "@/lib/supabase/client";
+import { authErrorMessage } from "@/lib/auth/authErrors";
+import { features } from "@/lib/features";
 
-type AuthMode = "login" | "register";
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+/**
+ * Ingreso de un solo paso (M10 · F2): la persona escribe su correo y recibe
+ * un código. Si la cuenta no existe, se crea al verificar el código y el
+ * layout del estudiante pide completar el perfil (ProfileCompletionModal).
+ * No hay que elegir entre "iniciar sesión" y "registrarse".
+ */
 export default function LoginPage() {
   const router = useRouter();
-  const { loginAs } = useAuth();
-  const [mode, setMode] = useState<AuthMode>("login");
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string>();
   const [sending, setSending] = useState(false);
-  /** Cuando el correo no coincide con el modo elegido, ofrece cambiar de pestaña en vez de solo mostrar un error. */
-  const [suggestedMode, setSuggestedMode] = useState<AuthMode | null>(null);
-
-  async function emailAlreadyRegistered(candidate: string): Promise<boolean> {
-    const res = await fetch("/api/auth/check-email", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: candidate }),
-    });
-    if (!res.ok) throw new Error("No pudimos verificar el correo. Intenta de nuevo.");
-    const { exists } = (await res.json()) as { exists: boolean };
-    return exists;
-  }
+  const googleEnabled = features.googleAuth;
 
   async function continueWithGoogle() {
-    if (isSupabaseMode()) {
-      const supabase = createClient();
-      const { error: oauthError } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: { redirectTo: `${window.location.origin}/auth/callback` },
-      });
-      if (oauthError) setError(oauthError.message);
-      // Si no hay error, el navegador ya está siendo redirigido a Google.
-      return;
-    }
-    // Atajo de la demo: Google entra siempre a la cuenta de estudiante (el
-    // profesor ingresa con su correo específico, ver spec).
-    await loginAs("u-student");
-    router.push("/dashboard");
+    const { error: oauthError } = await createClient().auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
+    });
+    if (oauthError) setError(authErrorMessage(oauthError));
+    // Si no hay error, el navegador ya está siendo redirigido a Google.
   }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!email.includes("@")) {
-      setError("Escribe un correo válido");
+    const address = email.trim().toLowerCase();
+    if (!EMAIL_PATTERN.test(address)) {
+      setError("Escribe un correo válido, por ejemplo nombre@fundacionwwbcol.org");
       return;
     }
 
-    if (isSupabaseMode()) {
-      setSending(true);
-      setError(undefined);
-      setSuggestedMode(null);
-
-      let exists: boolean;
-      try {
-        exists = await emailAlreadyRegistered(email);
-      } catch (checkError) {
-        setSending(false);
-        setError(checkError instanceof Error ? checkError.message : "Error inesperado");
-        return;
-      }
-
-      // Si intenta "iniciar sesión" con un correo sin cuenta, seguimos de una
-      // vez como registro (sin pedirle un clic extra) — solo cambia de
-      // pestaña visualmente y sigue el flujo de alta.
-      let effectiveMode = mode;
-      if (mode === "login" && !exists) {
-        effectiveMode = "register";
-        setMode("register");
-      }
-
-      if (effectiveMode === "register" && exists) {
-        setSending(false);
-        setError("Ya tienes una cuenta con este correo.");
-        setSuggestedMode("login");
-        return;
-      }
-
-      const supabase = createClient();
-      const { error: otpError } = await supabase.auth.signInWithOtp({
-        email,
-        // Refuerzo del lado de Supabase, por si algo más llega a llamar
-        // signInWithOtp saltándose el chequeo de arriba: en "login" nunca
-        // debe crear una cuenta nueva.
-        options: { shouldCreateUser: effectiveMode === "register" },
-      });
-      setSending(false);
-      if (otpError) {
-        setError(otpError.message);
-        return;
-      }
-      router.push(`/login/otp?email=${encodeURIComponent(email)}&mode=${effectiveMode}`);
-      return;
-    }
-
-    // Auth simulada: no se envía correo real; pasamos al paso del código.
-    router.push(`/login/otp?email=${encodeURIComponent(email)}&mode=${mode}`);
-  }
-
-  function switchMode(next: AuthMode) {
-    setMode(next);
-    setSuggestedMode(null);
+    setSending(true);
     setError(undefined);
+    const { error: otpError } = await createClient().auth.signInWithOtp({
+      email: address,
+      options: { shouldCreateUser: true },
+    });
+    setSending(false);
+    if (otpError) {
+      setError(authErrorMessage(otpError));
+      return;
+    }
+    router.push(`/login/otp?email=${encodeURIComponent(address)}`);
   }
-
-  const isRegister = mode === "register";
 
   return (
     <AuthShell
       step={1}
-      title={isRegister ? "¡Súmate a EQUIdata!" : "Bienvenida de vuelta"}
-      subtitle={
-        isRegister
-          ? "Crea tu cuenta para acceder a cursos, tutoriales y retos."
-          : "Ingresa con tu correo institucional y continúa donde ibas."
-      }
-      helperText={
-        isRegister
-          ? "Después del código completaremos tu perfil para personalizar tu ruta."
-          : "Sólo necesitamos confirmar tu código de acceso."
-      }
-      hideStepper={!isRegister}
+      title="Bienvenida a EQUIdata"
+      subtitle="Ingresa con tu correo y te enviamos un código de acceso."
+      helperText="Si es tu primera vez, después del código completarás tu perfil."
+      hideStepper
     >
-      {isRegister && (
-        <Badge tone="coral" className="mb-3">
-          Paso 1 de 3
-        </Badge>
-      )}
-      <h2 className="font-display text-2xl text-[var(--color-navy)]">
-        {isRegister ? "Crear cuenta" : "Iniciar sesión"}
-      </h2>
-
-      <div className="mt-5 grid grid-cols-2 rounded-[var(--radius-pill)] border border-[var(--color-divider)] bg-[var(--color-canvas)] p-1">
-        <button
-          type="button"
-          onClick={() => switchMode("login")}
-          className={`rounded-[var(--radius-pill)] px-3 py-2 text-sm font-medium transition-colors ${
-            mode === "login"
-              ? "bg-[var(--color-navy)] text-white"
-              : "text-[var(--color-muted)] hover:text-[var(--color-navy)]"
-          }`}
-        >
-          Iniciar sesión
-        </button>
-        <button
-          type="button"
-          onClick={() => switchMode("register")}
-          className={`rounded-[var(--radius-pill)] px-3 py-2 text-sm font-medium transition-colors ${
-            mode === "register"
-              ? "bg-[var(--color-navy)] text-white"
-              : "text-[var(--color-muted)] hover:text-[var(--color-navy)]"
-          }`}
-        >
-          Registrarse
-        </button>
-      </div>
+      <h2 className="font-display text-2xl text-[var(--color-navy)]">Ingresa a tu cuenta</h2>
 
       <form onSubmit={submit} className="mt-6 space-y-3.5">
         <Input
           id="email"
           label="Correo electrónico"
           type="email"
+          autoComplete="email"
           icon={Mail}
           placeholder="nombre@fundacionwwbcol.org"
           value={email}
           onChange={(e) => {
             setEmail(e.target.value);
             setError(undefined);
-            setSuggestedMode(null);
           }}
           error={error}
         />
-        {suggestedMode && (
-          <button
-            type="button"
-            onClick={() => switchMode(suggestedMode)}
-            className="text-sm text-[var(--color-lavender-text)] hover:underline"
-          >
-            {suggestedMode === "register" ? "Ir a registrarme →" : "Ir a iniciar sesión →"}
-          </button>
-        )}
         <Button type="submit" className="w-full" disabled={sending}>
-          {sending
-            ? "Enviando…"
-            : isRegister
-              ? "Registrarme con código"
-              : "Enviar código de acceso"}{" "}
-          <ArrowRight size={16} />
+          {sending ? "Enviando código…" : "Enviar código de acceso"} <ArrowRight size={16} />
         </Button>
       </form>
 
-      <div className="my-5 flex items-center gap-3">
-        <div className="h-px flex-1 bg-[var(--color-divider)]" />
-        <span className="text-[var(--color-coral)]">◆</span>
-        <div className="h-px flex-1 bg-[var(--color-divider)]" />
-      </div>
+      {googleEnabled && (
+        <>
+          <div className="my-5 flex items-center gap-3">
+            <div className="h-px flex-1 bg-[var(--color-divider)]" />
+            <span className="text-[var(--color-coral)]">◆</span>
+            <div className="h-px flex-1 bg-[var(--color-divider)]" />
+          </div>
 
-      <button
-        onClick={continueWithGoogle}
-        className="flex w-full items-center justify-center gap-2 rounded-[var(--radius-pill)] border border-[var(--color-divider)] bg-white px-5 py-2.5 text-sm font-medium text-[var(--color-navy)] transition-colors hover:bg-[var(--color-canvas)]"
-      >
-        <GoogleMark /> Continuar con Google
-      </button>
+          <button
+            type="button"
+            onClick={continueWithGoogle}
+            className="flex w-full items-center justify-center gap-2 rounded-[var(--radius-pill)] border border-[var(--color-divider)] bg-white px-5 py-2.5 text-sm font-medium text-[var(--color-navy)] transition-colors hover:bg-[var(--color-canvas)]"
+          >
+            <GoogleMark /> Continuar con Google
+          </button>
+        </>
+      )}
 
       <p className="mt-4 text-center text-xs text-[var(--color-hint)]">
         Al continuar aceptas la Política de Privacidad de la Fundación.
       </p>
+
+      {process.env.NODE_ENV === "development" && <DevQuickLogin />}
     </AuthShell>
   );
 }

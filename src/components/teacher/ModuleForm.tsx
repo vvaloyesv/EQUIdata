@@ -79,6 +79,16 @@ export function ModuleForm({
             placeholder="<!doctype html>…"
             className="w-full rounded-[var(--radius-token)] border border-[var(--color-divider)] bg-white p-3 font-mono text-xs text-[var(--color-navy)] focus-ring"
           />
+          <p className="text-xs text-[var(--color-muted)]">
+            La app elige el tamaño del cuadro según cómo esté hecho el HTML: presentación
+            (16:9), página (alto de la pantalla, con desplazamiento) o fragmento (se ajusta
+            al contenido). Si no acierta, agrega en el HTML{" "}
+            <code className="font-mono">
+              {'<meta name="equidata-layout" content="slides">'}
+            </code>{" "}
+            (o <code className="font-mono">page</code> /{" "}
+            <code className="font-mono">fragment</code>).
+          </p>
         </div>
       )}
       <div className="flex gap-2">

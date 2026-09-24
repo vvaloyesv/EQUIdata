@@ -1,0 +1,44 @@
+# Evita que Supabase pause el proyecto (el plan gratuito lo pausa tras ~7
+# días sin actividad). Cada 3 días hace una consulta real a Postgres por la
+# API REST — un ping a /auth/v1/health no cuenta como actividad de la base.
+#
+# Secrets del repo (Settings → Secrets and variables → Actions):
+#   SUPABASE_URL       https://<ref>.supabase.co
+#   SUPABASE_ANON_KEY  la llave pública (anon), nunca la service role
+#
+# Con la llave anon y RLS activo la respuesta llega vacía, pero la consulta
+# igual se ejecuta en Postgres, que es lo que cuenta.
+#
+# Ojo: si el repo es público, GitHub desactiva los workflows programados tras
+# 60 días sin commits; se reactiva desde la pestaña Actions.
+
+name: Supabase keep-alive
+
+on:
+  schedule:
+    - cron: "0 13 */3 * *" # 8:00 a. m. hora Colombia, cada 3 días
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Consultar la base
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "::error::Faltan los secrets SUPABASE_URL o SUPABASE_ANON_KEY"
+            exit 1
+          fi
+          status=$(curl -sS -o /dev/null -w "%{http_code}" --retry 3 --retry-delay 10 \
+            "$SUPABASE_URL/rest/v1/courses?select=id&limit=1" \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY")
+          echo "HTTP $status"
+          if [ "$status" != "200" ]; then
+            echo "::error::Supabase respondió $status. Si el proyecto está pausado, despáusalo desde el dashboard."
+            exit 1
+          fi

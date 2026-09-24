@@ -6,6 +6,7 @@
 
 import { NextResponse } from "next/server";
 import { createRouteHandlerClient } from "@/lib/supabase/server";
+import { claimsFromAccessToken, homeForRole, resolveRole } from "@/lib/auth/role";
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
@@ -22,12 +23,10 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${origin}/login`);
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", data.user.id)
-    .single();
-
-  const destination = profile?.role === "teacher" ? "/teacher/dashboard" : "/dashboard";
-  return NextResponse.redirect(`${origin}${destination}`);
+  const role = await resolveRole(
+    supabase,
+    data.user.id,
+    claimsFromAccessToken(data.session?.access_token),
+  );
+  return NextResponse.redirect(`${origin}${homeForRole(role)}`);
 }

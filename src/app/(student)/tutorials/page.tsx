@@ -2,16 +2,15 @@
 
 import Link from "next/link";
 import { Video, FileCode2 } from "lucide-react";
-import { useAsync } from "@/lib/useAsync";
+import { useRepoQuery } from "@/lib/query";
 import { getRepository } from "@/lib/data";
 import { Card } from "@/components/ui/Card";
 import { Label } from "@/components/ui/Label";
 
 /** Tutoriales rápidos: mini-módulos sueltos (spec §5.8) — reusan el tipo Module. */
 export default function TutorialsPage() {
-  const { data: tutorials, loading } = useAsync(
-    () => getRepository().listTutorials(),
-    [],
+  const { data: tutorials, loading } = useRepoQuery(["tutorials"], () =>
+    getRepository().listTutorials(),
   );
 
   if (loading || !tutorials) {

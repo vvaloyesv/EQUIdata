@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { notFound } from "next/navigation";
+import { features } from "@/lib/features";
 import { Send } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useAuth } from "@/context/AuthContext";
-import { useAsync } from "@/lib/useAsync";
+import { queryKeys, useRefresh, useRepoQuery } from "@/lib/query";
 import { getRepository } from "@/lib/data";
 import { buildConversations } from "@/lib/student/messages";
 import { Card } from "@/components/ui/Card";
@@ -15,29 +17,33 @@ import { EmptyState } from "@/components/ui/LockedState";
 
 /** Mensajería bidireccional (spec §5.10): el estudiante recibe y envía. */
 export default function MessagesPage() {
+  // Oculto en el piloto (src/lib/features.ts): la dirección directa también da 404.
+  if (!features.messages) notFound();
+  return <MessagesInbox />;
+}
+
+function MessagesInbox() {
   const { user } = useAuth();
-  const [reloadKey, setReloadKey] = useState(0);
+  const refresh = useRefresh();
   const [activeId, setActiveId] = useState<string>();
   const [draft, setDraft] = useState("");
+  const userId = user?.id ?? "";
 
-  const { data: conversations, loading } = useAsync(
-    () =>
-      user
-        ? buildConversations(getRepository(), user.id)
-        : Promise.resolve([]),
-    [user?.id, reloadKey],
+  const { data: conversations, loading } = useRepoQuery(
+    queryKeys.conversations(userId),
+    () => buildConversations(getRepository(), userId),
+    { enabled: !!user },
   );
 
   const active = conversations?.find((c) => c.otherUserId === activeId) ?? conversations?.[0];
 
   useEffect(() => {
     if (!user || !active || active.unreadCount === 0) return;
+    // El refresco también actualiza el badge de no leídos del sidebar (misma caché).
     void getRepository()
       .markConversationRead(user.id, active.otherUserId)
-      .then(() => {
-        window.dispatchEvent(new Event("equidata:messages-read"));
-        setReloadKey((k) => k + 1);
-      });
+      .then(() => refresh());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active?.otherUserId, active?.unreadCount, user?.id]);
 
   if (loading || !conversations) {
@@ -59,7 +65,7 @@ export default function MessagesPage() {
       read: true,
     });
     setDraft("");
-    setReloadKey((k) => k + 1);
+    await refresh();
   }
 
   return (

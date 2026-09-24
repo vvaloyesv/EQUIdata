@@ -424,3 +424,39 @@ export interface CalendarEvent {
   kind: "unlock" | "evaluation" | "deadline" | "event";
   courseId?: string;
 }
+
+// ————————————————————————————————————————————————————————————————
+// Lecturas en bloque (M10 · F4): agrupan en una consulta lo que las
+// pantallas antes pedían de a una fila. No son entidades nuevas, solo
+// formas de entregar varias entidades juntas.
+// ————————————————————————————————————————————————————————————————
+
+/**
+ * Estructura completa de un curso: sesiones en orden, sus módulos en orden
+ * y las evaluaciones del curso. Los módulos vienen SIN `contentHtml` (el
+ * HTML se pide aparte, solo al abrir el módulo — ver `getModuleContent`).
+ */
+export interface CourseStructure {
+  course: Course;
+  sessions: Session[];
+  modulesBySession: Record<string, Module[]>;
+  evaluations: Evaluation[];
+}
+
+/** Una evaluación con todo lo que hace falta para rendirla o calificarla. */
+export interface EvaluationDetail {
+  evaluation: Evaluation;
+  questions: Question[];
+  optionsByQuestion: Record<string, QuestionOption[]>;
+  outcomes: LearningOutcome[];
+}
+
+/** Publicación de Comunidad con lo necesario para el feed (autor y conteos). */
+export interface CommunityPostWithStats {
+  post: CommunityPost;
+  authorDisplayName: string;
+  /** El autor pidió no mostrar su nombre real (`StudentProfile.showNameInCommunity === false`). */
+  authorHidesName: boolean;
+  likeUserIds: string[];
+  replyCount: number;
+}

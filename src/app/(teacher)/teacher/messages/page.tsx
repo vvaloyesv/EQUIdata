@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { notFound } from "next/navigation";
+import { features } from "@/lib/features";
 import { Send, Plus } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useAuth } from "@/context/AuthContext";
-import { useAsync } from "@/lib/useAsync";
+import { queryKeys, useRefresh, useRepoQuery } from "@/lib/query";
 import { getRepository } from "@/lib/data";
 import { buildConversations } from "@/lib/student/messages";
 import { Card } from "@/components/ui/Card";
@@ -15,8 +17,15 @@ import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/LockedState";
 
 export default function TeacherMessagesPage() {
+  // Oculto en el piloto (src/lib/features.ts): la dirección directa también da 404.
+  if (!features.messages) notFound();
+  return <TeacherInbox />;
+}
+
+function TeacherInbox() {
   const { user } = useAuth();
-  const [reloadKey, setReloadKey] = useState(0);
+  const refresh = useRefresh();
+  const userId = user?.id ?? "";
   const [activeId, setActiveId] = useState<string>();
   const [draft, setDraft] = useState("");
   const [composing, setComposing] = useState(false);
@@ -24,12 +33,15 @@ export default function TeacherMessagesPage() {
   const [recipientId, setRecipientId] = useState<string>();
   const [broadcastNote, setBroadcastNote] = useState<string>();
 
-  const { data: conversations, loading } = useAsync(
-    () => (user ? buildConversations(getRepository(), user.id) : Promise.resolve([])),
-    [user?.id, reloadKey],
+  const { data: conversations, loading } = useRepoQuery(
+    queryKeys.conversations(userId),
+    () => buildConversations(getRepository(), userId),
+    { enabled: !!user },
   );
-  const { data: students } = useAsync(() => getRepository().listUsersByRole("student"), []);
-  const { data: courses } = useAsync(() => getRepository().listCourses(), []);
+  const { data: students } = useRepoQuery(["students"], () =>
+    getRepository().listUsersByRole("student"),
+  );
+  const { data: courses } = useRepoQuery(queryKeys.courses(), () => getRepository().listCourses());
 
   const active = conversations?.find((c) => c.otherUserId === activeId) ?? conversations?.[0];
 
@@ -37,7 +49,8 @@ export default function TeacherMessagesPage() {
     if (!user || !active || active.unreadCount === 0) return;
     void getRepository()
       .markConversationRead(user.id, active.otherUserId)
-      .then(() => setReloadKey((k) => k + 1));
+      .then(() => refresh());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active?.otherUserId, active?.unreadCount, user?.id]);
 
   async function send() {
@@ -51,7 +64,7 @@ export default function TeacherMessagesPage() {
       read: true,
     });
     setDraft("");
-    setReloadKey((k) => k + 1);
+    await refresh();
   }
 
   async function sendNew(e: React.FormEvent<HTMLFormElement>) {
@@ -74,22 +87,24 @@ export default function TeacherMessagesPage() {
       setActiveId(recipientId);
     } else {
       const enrollments = await repo.listEnrollmentsByCourse(recipientId);
-      for (const e of enrollments) {
-        await repo.sendMessage({
+      const createdAt = new Date().toISOString();
+      // Un solo insert para todo el curso (antes, uno por estudiante).
+      await repo.sendMessages(
+        enrollments.map((e) => ({
           id: `msg-${crypto.randomUUID()}`,
           fromUserId: user.id,
           toUserId: e.userId,
           courseId: recipientId,
           body,
-          createdAt: new Date().toISOString(),
+          createdAt,
           read: false,
-        });
-      }
+        })),
+      );
       setBroadcastNote(`Enviado a ${enrollments.length} estudiantes del curso.`);
     }
     setComposing(false);
     setRecipientId(undefined);
-    setReloadKey((k) => k + 1);
+    await refresh();
   }
 
   if (loading || !conversations) {

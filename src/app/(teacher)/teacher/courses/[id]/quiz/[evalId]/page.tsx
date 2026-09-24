@@ -3,7 +3,7 @@
 import { use, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, ClipboardCheck, FileCode2 } from "lucide-react";
-import { useAsync } from "@/lib/useAsync";
+import { useRefresh, useRepoQuery } from "@/lib/query";
 import { getRepository } from "@/lib/data";
 import { buildTeacherQuizView } from "@/lib/teacher/quiz";
 import { genId } from "@/lib/teacher/course";
@@ -37,14 +37,14 @@ export default function TeacherQuizPage({
   params: Promise<{ id: string; evalId: string }>;
 }) {
   const { id: courseId, evalId } = use(params);
-  const [reloadKey, setReloadKey] = useState(0);
+  const refresh = useRefresh();
+  const reload = () => void refresh();
   const [addingOutcome, setAddingOutcome] = useState(false);
   const [addingArchetype, setAddingArchetype] = useState(false);
   const [addingQuestion, setAddingQuestion] = useState(false);
 
-  const { data: vm, loading } = useAsync(
-    () => buildTeacherQuizView(getRepository(), evalId),
-    [evalId, reloadKey],
+  const { data: vm, loading } = useRepoQuery(["teacher-quiz", evalId], () =>
+    buildTeacherQuizView(getRepository(), evalId),
   );
 
   if (loading || !vm) {
@@ -75,14 +75,14 @@ export default function TeacherQuizPage({
           ? Number(form.get("waitHours") ?? evaluation.waitHours)
           : evaluation.waitHours,
     });
-    setReloadKey((k) => k + 1);
+    reload();
   }
 
   async function addOutcome(data: { code: string; name: string; expectedLevel: number }) {
     const repo = getRepository();
     await repo.createOutcome({ id: genId("ra"), evaluationId: evalId, ...data });
     setAddingOutcome(false);
-    setReloadKey((k) => k + 1);
+    reload();
   }
 
   async function addQuestion(data: QuestionSubmitData) {
@@ -110,7 +110,7 @@ export default function TeacherQuizPage({
       });
     }
     setAddingQuestion(false);
-    setReloadKey((k) => k + 1);
+    reload();
   }
 
   async function addArchetype(data: { name: string; description: string }) {
@@ -122,7 +122,7 @@ export default function TeacherQuizPage({
       ...data,
     });
     setAddingArchetype(false);
-    setReloadKey((k) => k + 1);
+    reload();
   }
 
   return (

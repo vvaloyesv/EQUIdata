@@ -6,15 +6,14 @@ import {
   Bell,
   CalendarDays,
   ChevronDown,
-  Gauge,
-  HelpCircle,
   LogOut,
   Play,
   Settings,
   Zap,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { useAsync } from "@/lib/useAsync";
+import { features } from "@/lib/features";
+import { queryKeys, useRefresh, useRepoQuery } from "@/lib/query";
 import { getRepository } from "@/lib/data";
 import { buildDashboard } from "@/lib/student/dashboard";
 import { getUnreadMessageCount } from "@/lib/student/messages";
@@ -32,34 +31,25 @@ import { BadgeCard } from "@/components/student/BadgeCard";
 
 export default function DashboardPage() {
   const { user, logout } = useAuth();
-  const [reloadKey, setReloadKey] = useState(0);
+  const refresh = useRefresh();
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const userId = user?.id ?? "";
 
-  const { data, loading } = useAsync(
+  const { data, loading } = useRepoQuery(
+    queryKeys.dashboard(userId),
     () =>
-      user
-        ? buildDashboard(
-            getRepository(),
-            user.id,
-            user.displayName,
-            new Date().toISOString(),
-          )
-        : Promise.resolve(null),
-    [user?.id, user?.displayName, reloadKey],
+      buildDashboard(getRepository(), userId, user?.displayName ?? "", new Date().toISOString()),
+    { enabled: !!user },
   );
-  const { data: profile } = useAsync(
-    () =>
-      user
-        ? getRepository().getStudentProfile(user.id)
-        : Promise.resolve(null),
-    [user?.id],
+  const { data: profile } = useRepoQuery(
+    queryKeys.studentProfile(userId),
+    () => getRepository().getStudentProfile(userId),
+    { enabled: !!user },
   );
-  const { data: unreadCount } = useAsync(
-    () =>
-      user
-        ? getUnreadMessageCount(getRepository(), user.id)
-        : Promise.resolve(0),
-    [user?.id],
+  const { data: unreadCount } = useRepoQuery(
+    queryKeys.unread(userId),
+    () => getUnreadMessageCount(getRepository(), userId),
+    { enabled: !!user && features.messages },
   );
 
   if (loading || !data) {
@@ -82,10 +72,9 @@ export default function DashboardPage() {
   const showStreakReminder =
     profile?.notifyStreakReminder !== false && streakDays > 0;
 
+  // Solo lo que funciona: "Mi actividad" y "Soporte" no tenían pantalla.
   const profileMenuItems = [
-    { label: "Mi actividad", icon: Gauge, href: undefined },
     { label: "Configuración de la cuenta", icon: Settings, href: "/settings" },
-    { label: "Soporte", icon: HelpCircle, href: undefined },
   ];
 
   function handleLogout() {
@@ -138,15 +127,18 @@ export default function DashboardPage() {
           <div className="h-12 w-px bg-[var(--color-divider)]" />
 
           <div className="relative flex items-center gap-3">
-            <Link
-              href="/messages"
-              className="relative flex h-10 w-10 items-center justify-center rounded-full text-[var(--color-muted)] transition-colors hover:bg-white hover:text-[var(--color-navy)]"
-            >
-              <Bell size={18} />
-              {showUnreadBell && (
-                <span className="absolute right-2.5 top-2 h-2 w-2 rounded-full bg-[var(--color-coral)]" />
-              )}
-            </Link>
+            {/* La campana solo avisa de mensajes: se oculta junto con ellos. */}
+            {features.messages && (
+              <Link
+                href="/messages"
+                className="relative flex h-10 w-10 items-center justify-center rounded-full text-[var(--color-muted)] transition-colors hover:bg-white hover:text-[var(--color-navy)]"
+              >
+                <Bell size={18} />
+                {showUnreadBell && (
+                  <span className="absolute right-2.5 top-2 h-2 w-2 rounded-full bg-[var(--color-coral)]" />
+                )}
+              </Link>
+            )}
 
             <button
               type="button"
@@ -434,7 +426,7 @@ export default function DashboardPage() {
       <div className="mt-6">
         <MoodTrackerCard
           currentMood={currentMood}
-          onMoodSaved={() => setReloadKey((k) => k + 1)}
+          onMoodSaved={() => void refresh()}
         />
       </div>
 

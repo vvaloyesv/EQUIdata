@@ -1,0 +1,2167 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`view-models del estudiante > avance de curso 1`] = `
+{
+  "completed": 3,
+  "total": 5,
+}
+`;
+
+exports[`view-models del estudiante > certificaciones 1`] = `
+[
+  {
+    "code": "EQUI-2026-WWB01",
+    "courseDescription": "dominando las medidas de tendencia central y dispersión, y aprendiendo a interpretar datos de programas sociales con enfoque de desarrollo y género.",
+    "courseId": "c-estadistica",
+    "courseTitle": "Fundamentos de Estadística Descriptiva",
+    "durationMin": 240,
+    "issuedAt": "2026-08-14T00:00:00.000Z",
+    "studentName": "Valentina Mendoza",
+    "teacherName": "Diego Fercho",
+    "userId": "u-student",
+  },
+]
+`;
+
+exports[`view-models del estudiante > comunidad 1`] = `
+[
+  {
+    "authorName": "María Fernanda",
+    "likeCount": 0,
+    "likedByMe": false,
+    "post": {
+      "authorId": "u-s3",
+      "body": "¿Alguna sede ya usó el diagnóstico inicial con su equipo? Quiero saber cómo les fue armando la línea base.",
+      "createdAt": "2026-08-13T16:40:00.000Z",
+      "id": "post-3",
+    },
+    "replyCount": 0,
+  },
+  {
+    "authorName": "Juan Camilo",
+    "likeCount": 1,
+    "likedByMe": true,
+    "post": {
+      "authorId": "u-s2",
+      "body": "Terminé la sesión de dispersión y variabilidad. La parte de desviación estándar con datos de cobertura territorial estuvo buenísima.",
+      "createdAt": "2026-08-13T09:05:00.000Z",
+      "id": "post-2",
+    },
+    "replyCount": 0,
+  },
+  {
+    "authorName": "Valentina",
+    "likeCount": 2,
+    "likedByMe": false,
+    "post": {
+      "authorId": "u-student",
+      "body": "¿Alguien más sintió que la calculadora de percentiles le ayudó a entender por fin la mediana? Me hubiera servido esto hace años en el trabajo.",
+      "createdAt": "2026-08-12T14:20:00.000Z",
+      "id": "post-1",
+    },
+    "replyCount": 1,
+  },
+]
+`;
+
+exports[`view-models del estudiante > conversaciones 1`] = `
+[
+  {
+    "lastMessageAt": "2026-08-13T09:30:00.000Z",
+    "messages": [
+      {
+        "body": "¿Hiciste ya la calculadora de percentiles? Me sirvió un montón.",
+        "createdAt": "2026-08-13T09:30:00.000Z",
+        "fromUserId": "u-s2",
+        "id": "msg-2",
+        "read": true,
+        "toUserId": "u-student",
+      },
+    ],
+    "otherName": "Juan Camilo",
+    "otherUserId": "u-s2",
+    "unreadCount": 0,
+  },
+  {
+    "lastMessageAt": "2026-08-12T15:00:00.000Z",
+    "messages": [
+      {
+        "body": "Hola Valentina, recuerda que el quiz de la sesión 3 abre la siguiente sesión. ¡Vas muy bien!",
+        "courseId": "c-estadistica",
+        "createdAt": "2026-08-12T15:00:00.000Z",
+        "fromUserId": "u-teacher",
+        "id": "msg-1",
+        "read": false,
+        "toUserId": "u-student",
+      },
+    ],
+    "otherName": "Valentina Vélez",
+    "otherUserId": "u-teacher",
+    "unreadCount": 1,
+  },
+]
+`;
+
+exports[`view-models del estudiante > cursos disponibles 1`] = `
+[
+  {
+    "description": "Diseño de indicadores sensibles al género y lectura crítica de brechas.",
+    "enrollmentOpen": true,
+    "id": "c-genero",
+    "published": true,
+    "teacherName": "Valentina Vélez",
+    "title": "Análisis de datos con perspectiva de género",
+  },
+]
+`;
+
+exports[`view-models del estudiante > dashboard 1`] = `
+{
+  "courses": [
+    {
+      "completedModules": 3,
+      "course": {
+        "certificateDescription": "dominando las medidas de tendencia central y dispersión, y aprendiendo a interpretar datos de programas sociales con enfoque de desarrollo y género.",
+        "certificateDurationHours": 4,
+        "description": "Mide, describe e interpreta datos de programas sociales con enfoque de desarrollo y género.",
+        "enrollmentOpen": true,
+        "id": "c-estadistica",
+        "published": true,
+        "teacherName": "Diego Fercho",
+        "title": "Fundamentos de Estadística Descriptiva",
+      },
+      "location": "Sesión 3 de 5",
+      "notStarted": false,
+      "percent": 60,
+      "totalModules": 5,
+    },
+    {
+      "completedModules": 0,
+      "course": {
+        "description": "Del cero a manipular datos con pandas para análisis territorial.",
+        "enrollmentOpen": true,
+        "id": "c-python",
+        "published": true,
+        "teacherName": "Valentina Vélez",
+        "title": "Introducción a Python para análisis",
+      },
+      "location": "Sesión 1 de 1",
+      "notStarted": true,
+      "percent": 0,
+      "totalModules": 0,
+    },
+  ],
+  "currentMood": null,
+  "events": [
+    {
+      "courseId": "c-estadistica",
+      "date": "2026-07-15T00:00:00.000Z",
+      "id": "ev-unlock-s1",
+      "kind": "unlock",
+      "title": "Se libera: Introducción y ecosistema de datos",
+    },
+    {
+      "courseId": "c-estadistica",
+      "date": "2026-07-22T00:00:00.000Z",
+      "id": "ev-unlock-s2",
+      "kind": "unlock",
+      "title": "Se libera: Estadística en el trabajo social",
+    },
+    {
+      "courseId": "c-estadistica",
+      "date": "2026-07-29T00:00:00.000Z",
+      "id": "ev-unlock-s3",
+      "kind": "unlock",
+      "title": "Se libera: Medidas de tendencia central",
+    },
+    {
+      "courseId": "c-python",
+      "date": "2026-08-01T00:00:00.000Z",
+      "id": "ev-unlock-sp1",
+      "kind": "unlock",
+      "title": "Se libera: Primeros pasos con Python",
+    },
+    {
+      "courseId": "c-estadistica",
+      "date": "2026-09-15T00:00:00.000Z",
+      "id": "ev-unlock-s4",
+      "kind": "unlock",
+      "title": "Se libera: Dispersión y variabilidad",
+    },
+    {
+      "courseId": "c-estadistica",
+      "date": "2026-09-29T00:00:00.000Z",
+      "id": "ev-unlock-s5",
+      "kind": "unlock",
+      "title": "Se libera: Visualización y storytelling",
+    },
+  ],
+  "greetingName": "Valentina",
+  "resume": {
+    "completedModules": 3,
+    "course": {
+      "certificateDescription": "dominando las medidas de tendencia central y dispersión, y aprendiendo a interpretar datos de programas sociales con enfoque de desarrollo y género.",
+      "certificateDurationHours": 4,
+      "description": "Mide, describe e interpreta datos de programas sociales con enfoque de desarrollo y género.",
+      "enrollmentOpen": true,
+      "id": "c-estadistica",
+      "published": true,
+      "teacherName": "Diego Fercho",
+      "title": "Fundamentos de Estadística Descriptiva",
+    },
+    "location": "Sesión 3 de 5",
+    "notStarted": false,
+    "percent": 60,
+    "totalModules": 5,
+  },
+  "reviewModules": [
+    {
+      "context": "course",
+      "description": "Clasifica variables de un dataset real.",
+      "durationMin": 6,
+      "id": "m-s2-1",
+      "order": 1,
+      "sessionId": "s2",
+      "title": "Tipos de variables (interactivo)",
+      "type": "html",
+    },
+    {
+      "context": "course",
+      "description": "El punto de partida: de la realidad social al dato.",
+      "durationMin": 4,
+      "id": "m-s1-1",
+      "order": 1,
+      "sessionId": "s1",
+      "title": "¿Qué es un dato?",
+      "type": "video",
+      "videoUrl": "https://www.youtube.com/embed/dQw4w9WgXcQ",
+    },
+  ],
+  "stats": {
+    "average": 30,
+    "completed": 0,
+    "inProgress": 1,
+  },
+  "streakDays": 1,
+}
+`;
+
+exports[`view-models del estudiante > dashboard sin progreso 1`] = `
+{
+  "courses": [
+    {
+      "completedModules": 0,
+      "course": {
+        "certificateDescription": "dominando las medidas de tendencia central y dispersión, y aprendiendo a interpretar datos de programas sociales con enfoque de desarrollo y género.",
+        "certificateDurationHours": 4,
+        "description": "Mide, describe e interpreta datos de programas sociales con enfoque de desarrollo y género.",
+        "enrollmentOpen": true,
+        "id": "c-estadistica",
+        "published": true,
+        "teacherName": "Diego Fercho",
+        "title": "Fundamentos de Estadística Descriptiva",
+      },
+      "location": "Sesión 1 de 5",
+      "notStarted": true,
+      "percent": 0,
+      "totalModules": 5,
+    },
+  ],
+  "currentMood": null,
+  "events": [
+    {
+      "courseId": "c-estadistica",
+      "date": "2026-07-15T00:00:00.000Z",
+      "id": "ev-unlock-s1",
+      "kind": "unlock",
+      "title": "Se libera: Introducción y ecosistema de datos",
+    },
+    {
+      "courseId": "c-estadistica",
+      "date": "2026-07-22T00:00:00.000Z",
+      "id": "ev-unlock-s2",
+      "kind": "unlock",
+      "title": "Se libera: Estadística en el trabajo social",
+    },
+    {
+      "courseId": "c-estadistica",
+      "date": "2026-07-29T00:00:00.000Z",
+      "id": "ev-unlock-s3",
+      "kind": "unlock",
+      "title": "Se libera: Medidas de tendencia central",
+    },
+    {
+      "courseId": "c-estadistica",
+      "date": "2026-09-15T00:00:00.000Z",
+      "id": "ev-unlock-s4",
+      "kind": "unlock",
+      "title": "Se libera: Dispersión y variabilidad",
+    },
+    {
+      "courseId": "c-estadistica",
+      "date": "2026-09-29T00:00:00.000Z",
+      "id": "ev-unlock-s5",
+      "kind": "unlock",
+      "title": "Se libera: Visualización y storytelling",
+    },
+  ],
+  "greetingName": "Otra",
+  "resume": undefined,
+  "reviewModules": [],
+  "stats": {
+    "average": 0,
+    "completed": 0,
+    "inProgress": 0,
+  },
+  "streakDays": 0,
+}
+`;
+
+exports[`view-models del estudiante > evaluación — diagnóstico final 1`] = `
+{
+  "archetypes": [],
+  "courseId": "c-estadistica",
+  "evaluation": {
+    "courseId": "c-estadistica",
+    "id": "e-diag-fin",
+    "isActive": true,
+    "kind": "diagnostic_final",
+    "maxAttempts": 2,
+    "passingScore": 80,
+    "title": "Diagnóstico final",
+    "waitHours": 8,
+  },
+  "gate": {
+    "bestScore": undefined,
+    "canAttempt": true,
+    "passed": false,
+    "usedAttempts": 0,
+  },
+  "modulesGate": {
+    "ok": true,
+  },
+  "optionsByQuestion": {
+    "qf1": [
+      {
+        "id": "of1a",
+        "isCorrect": true,
+        "questionId": "qf1",
+        "text": "La media",
+      },
+      {
+        "id": "of1b",
+        "isCorrect": false,
+        "questionId": "qf1",
+        "text": "La mediana",
+      },
+      {
+        "id": "of1c",
+        "isCorrect": false,
+        "questionId": "qf1",
+        "text": "La moda",
+      },
+    ],
+    "qf2": [
+      {
+        "id": "of2a",
+        "isCorrect": true,
+        "questionId": "qf2",
+        "text": "Media",
+      },
+      {
+        "id": "of2b",
+        "isCorrect": true,
+        "questionId": "qf2",
+        "text": "Mediana",
+      },
+      {
+        "id": "of2c",
+        "isCorrect": false,
+        "questionId": "qf2",
+        "text": "Desviación estándar",
+      },
+      {
+        "id": "of2d",
+        "isCorrect": true,
+        "questionId": "qf2",
+        "text": "Moda",
+      },
+    ],
+    "qf3": [],
+  },
+  "outcomes": [
+    {
+      "code": "RA1",
+      "evaluationId": "e-diag-fin",
+      "expectedLevel": 60,
+      "id": "ra1-fin",
+      "name": "Teoría básica",
+    },
+    {
+      "code": "RA2",
+      "evaluationId": "e-diag-fin",
+      "expectedLevel": 70,
+      "id": "ra2-fin",
+      "name": "Interpretación de resultados",
+    },
+  ],
+  "priorArchetypeResult": undefined,
+  "questions": [
+    {
+      "evaluationId": "e-diag-fin",
+      "id": "qf1",
+      "order": 1,
+      "outcomeId": "ra1-fin",
+      "points": 1,
+      "text": "¿Cuál medida de tendencia central es más sensible a valores extremos?",
+      "type": "single",
+    },
+    {
+      "evaluationId": "e-diag-fin",
+      "id": "qf2",
+      "order": 2,
+      "outcomeId": "ra1-fin",
+      "points": 1,
+      "text": "¿Cuáles de las siguientes son medidas de tendencia central?",
+      "type": "multiple",
+    },
+    {
+      "evaluationId": "e-diag-fin",
+      "id": "qf3",
+      "order": 3,
+      "outcomeId": "ra2-fin",
+      "points": 0,
+      "text": "Explica con tus palabras cuándo preferirías la mediana sobre la media.",
+      "type": "open",
+    },
+  ],
+}
+`;
+
+exports[`view-models del estudiante > evaluación — diagnóstico inicial 1`] = `
+{
+  "archetypes": [],
+  "courseId": "c-estadistica",
+  "evaluation": {
+    "courseId": "c-estadistica",
+    "id": "e-diag-ini",
+    "isActive": true,
+    "kind": "diagnostic_initial",
+    "maxAttempts": 1,
+    "title": "Diagnóstico inicial",
+    "waitHours": 0,
+  },
+  "gate": {
+    "bestScore": 45,
+    "canAttempt": false,
+    "passed": false,
+    "reasonLabel": "Agotaste tus intentos",
+    "usedAttempts": 1,
+  },
+  "modulesGate": {
+    "ok": true,
+  },
+  "optionsByQuestion": {
+    "qi1": [
+      {
+        "id": "oi1a",
+        "isCorrect": true,
+        "questionId": "qi1",
+        "text": "La media",
+      },
+      {
+        "id": "oi1b",
+        "isCorrect": false,
+        "questionId": "qi1",
+        "text": "La mediana",
+      },
+      {
+        "id": "oi1c",
+        "isCorrect": false,
+        "questionId": "qi1",
+        "text": "La moda",
+      },
+    ],
+    "qi2": [],
+  },
+  "outcomes": [
+    {
+      "code": "RA1",
+      "evaluationId": "e-diag-ini",
+      "expectedLevel": 60,
+      "id": "ra1-ini",
+      "name": "Teoría básica",
+    },
+    {
+      "code": "RA2",
+      "evaluationId": "e-diag-ini",
+      "expectedLevel": 70,
+      "id": "ra2-ini",
+      "name": "Interpretación de resultados",
+    },
+  ],
+  "priorArchetypeResult": undefined,
+  "questions": [
+    {
+      "evaluationId": "e-diag-ini",
+      "id": "qi1",
+      "order": 1,
+      "outcomeId": "ra1-ini",
+      "points": 1,
+      "text": "¿Cuál medida de tendencia central es más sensible a valores extremos?",
+      "type": "single",
+    },
+    {
+      "evaluationId": "e-diag-ini",
+      "id": "qi2",
+      "order": 2,
+      "outcomeId": "ra2-ini",
+      "points": 0,
+      "text": "Del 1 al 10, ¿qué tan cómoda te sientes interpretando estadística descriptiva?",
+      "type": "scale",
+    },
+  ],
+}
+`;
+
+exports[`view-models del estudiante > evaluación — quiz 1`] = `
+{
+  "archetypes": [],
+  "courseId": "c-estadistica",
+  "evaluation": {
+    "courseId": "c-estadistica",
+    "id": "e-quiz-s3",
+    "isActive": true,
+    "kind": "quiz",
+    "maxAttempts": 2,
+    "passingScore": 80,
+    "placementAfterModuleId": "m-s3-2",
+    "sessionId": "s3",
+    "title": "Quiz — Medidas de tendencia central",
+    "waitHours": 0,
+  },
+  "gate": {
+    "bestScore": undefined,
+    "canAttempt": true,
+    "passed": false,
+    "usedAttempts": 0,
+  },
+  "modulesGate": {
+    "ok": false,
+    "reasonLabel": "Completa los módulos de la sesión antes de rendir el quiz.",
+  },
+  "optionsByQuestion": {
+    "q1": [
+      {
+        "id": "o1a",
+        "isCorrect": true,
+        "questionId": "q1",
+        "text": "La media",
+      },
+      {
+        "id": "o1b",
+        "isCorrect": false,
+        "questionId": "q1",
+        "text": "La mediana",
+      },
+      {
+        "id": "o1c",
+        "isCorrect": false,
+        "questionId": "q1",
+        "text": "La moda",
+      },
+    ],
+    "q2": [
+      {
+        "id": "o2a",
+        "isCorrect": true,
+        "questionId": "q2",
+        "text": "Media",
+      },
+      {
+        "id": "o2b",
+        "isCorrect": true,
+        "questionId": "q2",
+        "text": "Mediana",
+      },
+      {
+        "id": "o2c",
+        "isCorrect": false,
+        "questionId": "q2",
+        "text": "Desviación estándar",
+      },
+      {
+        "id": "o2d",
+        "isCorrect": true,
+        "questionId": "q2",
+        "text": "Moda",
+      },
+    ],
+    "q3": [],
+    "q4": [],
+  },
+  "outcomes": [
+    {
+      "code": "RA1",
+      "evaluationId": "e-quiz-s3",
+      "expectedLevel": 60,
+      "id": "ra1",
+      "name": "Teoría básica",
+    },
+    {
+      "code": "RA2",
+      "evaluationId": "e-quiz-s3",
+      "expectedLevel": 70,
+      "id": "ra2",
+      "name": "Interpretación de resultados",
+    },
+  ],
+  "priorArchetypeResult": undefined,
+  "questions": [
+    {
+      "evaluationId": "e-quiz-s3",
+      "id": "q1",
+      "order": 1,
+      "outcomeId": "ra1",
+      "points": 1,
+      "text": "¿Cuál medida de tendencia central es más sensible a valores extremos?",
+      "type": "single",
+    },
+    {
+      "evaluationId": "e-quiz-s3",
+      "id": "q2",
+      "order": 2,
+      "outcomeId": "ra1",
+      "points": 1,
+      "text": "¿Cuáles de las siguientes son medidas de tendencia central?",
+      "type": "multiple",
+    },
+    {
+      "evaluationId": "e-quiz-s3",
+      "id": "q3",
+      "order": 3,
+      "outcomeId": "ra2",
+      "points": 0,
+      "text": "Explica con tus palabras cuándo preferirías la mediana sobre la media.",
+      "type": "open",
+    },
+    {
+      "evaluationId": "e-quiz-s3",
+      "id": "q4",
+      "order": 4,
+      "outcomeId": "ra2",
+      "points": 0,
+      "text": "Del 1 al 10, ¿qué tan segura te sientes interpretando estas medidas?",
+      "type": "scale",
+    },
+  ],
+}
+`;
+
+exports[`view-models del estudiante > línea base pre/post 1`] = `
+{
+  "RA1": 30,
+}
+`;
+
+exports[`view-models del estudiante > no leídos 1`] = `1`;
+
+exports[`view-models del estudiante > racha 1`] = `1`;
+
+exports[`view-models del estudiante > retos 1`] = `
+[
+  {
+    "attemptCount": 0,
+    "bestAttempt": null,
+    "challenge": {
+      "createdAt": "2026-08-05T00:00:00.000Z",
+      "description": "Responde 3 preguntas rápidas sobre media, mediana y moda.",
+      "difficulty": "Básico",
+      "id": "ch-tendencia-central",
+      "title": "Medidas de tendencia central",
+    },
+  },
+]
+`;
+
+exports[`view-models del estudiante > vista de curso — estadística 1`] = `
+{
+  "certificateEligible": false,
+  "certificateReason": "Completa todos los módulos del curso",
+  "course": {
+    "certificateDescription": "dominando las medidas de tendencia central y dispersión, y aprendiendo a interpretar datos de programas sociales con enfoque de desarrollo y género.",
+    "certificateDurationHours": 4,
+    "description": "Mide, describe e interpreta datos de programas sociales con enfoque de desarrollo y género.",
+    "enrollmentOpen": true,
+    "id": "c-estadistica",
+    "published": true,
+    "teacherName": "Diego Fercho",
+    "title": "Fundamentos de Estadística Descriptiva",
+  },
+  "defaultSessionId": "s3",
+  "diagnosticDone": true,
+  "diagnosticFinal": {
+    "courseId": "c-estadistica",
+    "id": "e-diag-fin",
+    "isActive": true,
+    "kind": "diagnostic_final",
+    "maxAttempts": 2,
+    "passingScore": 80,
+    "title": "Diagnóstico final",
+    "waitHours": 8,
+  },
+  "diagnosticInitial": {
+    "courseId": "c-estadistica",
+    "id": "e-diag-ini",
+    "isActive": true,
+    "kind": "diagnostic_initial",
+    "maxAttempts": 1,
+    "title": "Diagnóstico inicial",
+    "waitHours": 0,
+  },
+  "finalDiagnosticAvailable": false,
+  "interestOnboarding": undefined,
+  "interestOnboardingDone": false,
+  "sessions": [
+    {
+      "completedModuleIds": [
+        "m-s1-1",
+        "m-s2-1",
+        "m-s3-1",
+      ],
+      "modules": [
+        {
+          "context": "course",
+          "description": "El punto de partida: de la realidad social al dato.",
+          "durationMin": 4,
+          "id": "m-s1-1",
+          "order": 1,
+          "sessionId": "s1",
+          "title": "¿Qué es un dato?",
+          "type": "video",
+          "videoUrl": "https://www.youtube.com/embed/dQw4w9WgXcQ",
+        },
+      ],
+      "quizEvaluation": undefined,
+      "quizGate": undefined,
+      "session": {
+        "courseId": "c-estadistica",
+        "id": "s1",
+        "order": 1,
+        "title": "Introducción y ecosistema de datos",
+        "unlockDate": "2026-07-15T00:00:00.000Z",
+      },
+      "status": "completed",
+      "unlock": {
+        "unlocked": true,
+      },
+    },
+    {
+      "completedModuleIds": [
+        "m-s1-1",
+        "m-s2-1",
+        "m-s3-1",
+      ],
+      "modules": [
+        {
+          "context": "course",
+          "description": "Clasifica variables de un dataset real.",
+          "durationMin": 6,
+          "id": "m-s2-1",
+          "order": 1,
+          "sessionId": "s2",
+          "title": "Tipos de variables (interactivo)",
+          "type": "html",
+        },
+      ],
+      "quizEvaluation": undefined,
+      "quizGate": undefined,
+      "session": {
+        "courseId": "c-estadistica",
+        "id": "s2",
+        "order": 2,
+        "title": "Estadística en el trabajo social",
+        "unlockDate": "2026-07-22T00:00:00.000Z",
+      },
+      "status": "completed",
+      "unlock": {
+        "unlocked": true,
+      },
+    },
+    {
+      "completedModuleIds": [
+        "m-s1-1",
+        "m-s2-1",
+        "m-s3-1",
+      ],
+      "modules": [
+        {
+          "context": "course",
+          "description": "Calcula e interpreta las tres medidas de tendencia central con datos reales de encuestas territoriales de la Fundación.",
+          "durationMin": 4,
+          "id": "m-s3-1",
+          "order": 1,
+          "sessionId": "s3",
+          "title": "Media, mediana y moda en acción",
+          "type": "video",
+          "videoUrl": "https://www.youtube.com/embed/dQw4w9WgXcQ",
+        },
+        {
+          "context": "course",
+          "description": "Recurso interactivo: ingresa un conjunto de datos y observa cómo cambian los percentiles.",
+          "durationMin": 8,
+          "id": "m-s3-2",
+          "order": 2,
+          "sessionId": "s3",
+          "title": "Calculadora de percentiles",
+          "type": "html",
+        },
+      ],
+      "quizEvaluation": {
+        "courseId": "c-estadistica",
+        "id": "e-quiz-s3",
+        "isActive": true,
+        "kind": "quiz",
+        "maxAttempts": 2,
+        "passingScore": 80,
+        "placementAfterModuleId": "m-s3-2",
+        "sessionId": "s3",
+        "title": "Quiz — Medidas de tendencia central",
+        "waitHours": 0,
+      },
+      "quizGate": {
+        "bestScore": undefined,
+        "canAttempt": true,
+        "passed": false,
+        "usedAttempts": 0,
+      },
+      "session": {
+        "courseId": "c-estadistica",
+        "id": "s3",
+        "order": 3,
+        "title": "Medidas de tendencia central",
+        "unlockDate": "2026-07-29T00:00:00.000Z",
+      },
+      "status": "in_progress",
+      "unlock": {
+        "unlocked": true,
+      },
+    },
+    {
+      "completedModuleIds": [
+        "m-s1-1",
+        "m-s2-1",
+        "m-s3-1",
+      ],
+      "modules": [
+        {
+          "context": "course",
+          "description": "Qué tan dispersos están los datos.",
+          "durationMin": 4,
+          "id": "m-s4-1",
+          "order": 1,
+          "sessionId": "s4",
+          "title": "Rango, varianza y desviación",
+          "type": "video",
+          "videoUrl": "https://www.youtube.com/embed/dQw4w9WgXcQ",
+        },
+      ],
+      "quizEvaluation": undefined,
+      "quizGate": undefined,
+      "session": {
+        "courseId": "c-estadistica",
+        "id": "s4",
+        "order": 4,
+        "title": "Dispersión y variabilidad",
+        "unlockDate": "2026-09-15T00:00:00.000Z",
+      },
+      "status": "locked",
+      "unlock": {
+        "reason": "date",
+        "reasonLabel": "Disponible a partir del 14 de septiembre de 2026",
+        "unlocked": false,
+      },
+    },
+    {
+      "completedModuleIds": [
+        "m-s1-1",
+        "m-s2-1",
+        "m-s3-1",
+      ],
+      "modules": [],
+      "quizEvaluation": undefined,
+      "quizGate": undefined,
+      "session": {
+        "courseId": "c-estadistica",
+        "id": "s5",
+        "order": 5,
+        "title": "Visualización y storytelling",
+        "unlockDate": "2026-09-29T00:00:00.000Z",
+      },
+      "status": "locked",
+      "unlock": {
+        "reason": "date",
+        "reasonLabel": "Disponible a partir del 28 de septiembre de 2026",
+        "unlocked": false,
+      },
+    },
+  ],
+}
+`;
+
+exports[`view-models del estudiante > vista de curso — otra estudiante 1`] = `
+{
+  "certificateEligible": false,
+  "certificateReason": "Completa todos los módulos del curso",
+  "course": {
+    "certificateDescription": "dominando las medidas de tendencia central y dispersión, y aprendiendo a interpretar datos de programas sociales con enfoque de desarrollo y género.",
+    "certificateDurationHours": 4,
+    "description": "Mide, describe e interpreta datos de programas sociales con enfoque de desarrollo y género.",
+    "enrollmentOpen": true,
+    "id": "c-estadistica",
+    "published": true,
+    "teacherName": "Diego Fercho",
+    "title": "Fundamentos de Estadística Descriptiva",
+  },
+  "defaultSessionId": "s1",
+  "diagnosticDone": false,
+  "diagnosticFinal": {
+    "courseId": "c-estadistica",
+    "id": "e-diag-fin",
+    "isActive": true,
+    "kind": "diagnostic_final",
+    "maxAttempts": 2,
+    "passingScore": 80,
+    "title": "Diagnóstico final",
+    "waitHours": 8,
+  },
+  "diagnosticInitial": {
+    "courseId": "c-estadistica",
+    "id": "e-diag-ini",
+    "isActive": true,
+    "kind": "diagnostic_initial",
+    "maxAttempts": 1,
+    "title": "Diagnóstico inicial",
+    "waitHours": 0,
+  },
+  "finalDiagnosticAvailable": false,
+  "interestOnboarding": undefined,
+  "interestOnboardingDone": false,
+  "sessions": [
+    {
+      "completedModuleIds": [],
+      "modules": [
+        {
+          "context": "course",
+          "description": "El punto de partida: de la realidad social al dato.",
+          "durationMin": 4,
+          "id": "m-s1-1",
+          "order": 1,
+          "sessionId": "s1",
+          "title": "¿Qué es un dato?",
+          "type": "video",
+          "videoUrl": "https://www.youtube.com/embed/dQw4w9WgXcQ",
+        },
+      ],
+      "quizEvaluation": undefined,
+      "quizGate": undefined,
+      "session": {
+        "courseId": "c-estadistica",
+        "id": "s1",
+        "order": 1,
+        "title": "Introducción y ecosistema de datos",
+        "unlockDate": "2026-07-15T00:00:00.000Z",
+      },
+      "status": "locked",
+      "unlock": {
+        "reason": "diagnostic_pending",
+        "reasonLabel": "Completa el diagnóstico inicial para empezar",
+        "unlocked": false,
+      },
+    },
+    {
+      "completedModuleIds": [],
+      "modules": [
+        {
+          "context": "course",
+          "description": "Clasifica variables de un dataset real.",
+          "durationMin": 6,
+          "id": "m-s2-1",
+          "order": 1,
+          "sessionId": "s2",
+          "title": "Tipos de variables (interactivo)",
+          "type": "html",
+        },
+      ],
+      "quizEvaluation": undefined,
+      "quizGate": undefined,
+      "session": {
+        "courseId": "c-estadistica",
+        "id": "s2",
+        "order": 2,
+        "title": "Estadística en el trabajo social",
+        "unlockDate": "2026-07-22T00:00:00.000Z",
+      },
+      "status": "locked",
+      "unlock": {
+        "reason": "diagnostic_pending",
+        "reasonLabel": "Completa el diagnóstico inicial para empezar",
+        "unlocked": false,
+      },
+    },
+    {
+      "completedModuleIds": [],
+      "modules": [
+        {
+          "context": "course",
+          "description": "Calcula e interpreta las tres medidas de tendencia central con datos reales de encuestas territoriales de la Fundación.",
+          "durationMin": 4,
+          "id": "m-s3-1",
+          "order": 1,
+          "sessionId": "s3",
+          "title": "Media, mediana y moda en acción",
+          "type": "video",
+          "videoUrl": "https://www.youtube.com/embed/dQw4w9WgXcQ",
+        },
+        {
+          "context": "course",
+          "description": "Recurso interactivo: ingresa un conjunto de datos y observa cómo cambian los percentiles.",
+          "durationMin": 8,
+          "id": "m-s3-2",
+          "order": 2,
+          "sessionId": "s3",
+          "title": "Calculadora de percentiles",
+          "type": "html",
+        },
+      ],
+      "quizEvaluation": {
+        "courseId": "c-estadistica",
+        "id": "e-quiz-s3",
+        "isActive": true,
+        "kind": "quiz",
+        "maxAttempts": 2,
+        "passingScore": 80,
+        "placementAfterModuleId": "m-s3-2",
+        "sessionId": "s3",
+        "title": "Quiz — Medidas de tendencia central",
+        "waitHours": 0,
+      },
+      "quizGate": {
+        "bestScore": undefined,
+        "canAttempt": true,
+        "passed": false,
+        "usedAttempts": 0,
+      },
+      "session": {
+        "courseId": "c-estadistica",
+        "id": "s3",
+        "order": 3,
+        "title": "Medidas de tendencia central",
+        "unlockDate": "2026-07-29T00:00:00.000Z",
+      },
+      "status": "locked",
+      "unlock": {
+        "reason": "diagnostic_pending",
+        "reasonLabel": "Completa el diagnóstico inicial para empezar",
+        "unlocked": false,
+      },
+    },
+    {
+      "completedModuleIds": [],
+      "modules": [
+        {
+          "context": "course",
+          "description": "Qué tan dispersos están los datos.",
+          "durationMin": 4,
+          "id": "m-s4-1",
+          "order": 1,
+          "sessionId": "s4",
+          "title": "Rango, varianza y desviación",
+          "type": "video",
+          "videoUrl": "https://www.youtube.com/embed/dQw4w9WgXcQ",
+        },
+      ],
+      "quizEvaluation": undefined,
+      "quizGate": undefined,
+      "session": {
+        "courseId": "c-estadistica",
+        "id": "s4",
+        "order": 4,
+        "title": "Dispersión y variabilidad",
+        "unlockDate": "2026-09-15T00:00:00.000Z",
+      },
+      "status": "locked",
+      "unlock": {
+        "reason": "diagnostic_pending",
+        "reasonLabel": "Completa el diagnóstico inicial para empezar",
+        "unlocked": false,
+      },
+    },
+    {
+      "completedModuleIds": [],
+      "modules": [],
+      "quizEvaluation": undefined,
+      "quizGate": undefined,
+      "session": {
+        "courseId": "c-estadistica",
+        "id": "s5",
+        "order": 5,
+        "title": "Visualización y storytelling",
+        "unlockDate": "2026-09-29T00:00:00.000Z",
+      },
+      "status": "locked",
+      "unlock": {
+        "reason": "diagnostic_pending",
+        "reasonLabel": "Completa el diagnóstico inicial para empezar",
+        "unlocked": false,
+      },
+    },
+  ],
+}
+`;
+
+exports[`view-models del estudiante > vista de curso — python 1`] = `
+{
+  "certificateEligible": false,
+  "certificateReason": "Este curso no tiene diagnóstico final.",
+  "course": {
+    "description": "Del cero a manipular datos con pandas para análisis territorial.",
+    "enrollmentOpen": true,
+    "id": "c-python",
+    "published": true,
+    "teacherName": "Valentina Vélez",
+    "title": "Introducción a Python para análisis",
+  },
+  "defaultSessionId": "sp1",
+  "diagnosticDone": true,
+  "diagnosticFinal": undefined,
+  "diagnosticInitial": undefined,
+  "finalDiagnosticAvailable": false,
+  "interestOnboarding": undefined,
+  "interestOnboardingDone": false,
+  "sessions": [
+    {
+      "completedModuleIds": [
+        "m-s1-1",
+        "m-s2-1",
+        "m-s3-1",
+      ],
+      "modules": [],
+      "quizEvaluation": undefined,
+      "quizGate": undefined,
+      "session": {
+        "courseId": "c-python",
+        "id": "sp1",
+        "order": 1,
+        "title": "Primeros pasos con Python",
+        "unlockDate": "2026-08-01T00:00:00.000Z",
+      },
+      "status": "in_progress",
+      "unlock": {
+        "unlocked": true,
+      },
+    },
+  ],
+}
+`;
+
+exports[`view-models del profesor > calificaciones — diagnóstico inicial 1`] = `
+{
+  "evaluation": {
+    "courseId": "c-estadistica",
+    "id": "e-diag-ini",
+    "isActive": true,
+    "kind": "diagnostic_initial",
+    "maxAttempts": 1,
+    "title": "Diagnóstico inicial",
+    "waitHours": 0,
+  },
+  "outcomes": [
+    {
+      "code": "RA1",
+      "evaluationId": "e-diag-ini",
+      "expectedLevel": 60,
+      "id": "ra1-ini",
+      "name": "Teoría básica",
+    },
+    {
+      "code": "RA2",
+      "evaluationId": "e-diag-ini",
+      "expectedLevel": 70,
+      "id": "ra2-ini",
+      "name": "Interpretación de resultados",
+    },
+  ],
+  "questionLabels": [
+    "P1: ¿Cuál medida de tendencia central es más sensible a valores extremos?",
+    "P2: Del 1 al 10, ¿qué tan cómoda te sientes interpretando estadística descriptiva?",
+  ],
+  "rows": [
+    {
+      "bestScore": 45,
+      "canReopen": true,
+      "openAnswers": [],
+      "outcomeAchieved": {
+        "RA1": 30,
+      },
+      "passed": false,
+      "questionAnswers": [
+        "La mediana",
+        "4",
+      ],
+      "student": {
+        "displayName": "Valentina",
+        "email": "valentina.mendoza@fundacionwwbcol.org",
+        "id": "u-student",
+        "lastSeen": "2026-08-13T11:40:00.000Z",
+        "role": "student",
+      },
+      "usedAttempts": 1,
+    },
+    {
+      "bestScore": undefined,
+      "canReopen": false,
+      "openAnswers": [],
+      "outcomeAchieved": {},
+      "passed": false,
+      "questionAnswers": [
+        "",
+        "",
+      ],
+      "student": {
+        "displayName": "Juan Camilo",
+        "email": "juan.rojas@fundacionwwbcol.org",
+        "id": "u-s2",
+        "lastSeen": "2026-08-13T09:10:00.000Z",
+        "role": "student",
+      },
+      "usedAttempts": 0,
+    },
+    {
+      "bestScore": undefined,
+      "canReopen": false,
+      "openAnswers": [],
+      "outcomeAchieved": {},
+      "passed": false,
+      "questionAnswers": [
+        "",
+        "",
+      ],
+      "student": {
+        "displayName": "María Fernanda",
+        "email": "maria.gonzalez@fundacionwwbcol.org",
+        "id": "u-s3",
+        "lastSeen": "2026-08-12T18:00:00.000Z",
+        "role": "student",
+      },
+      "usedAttempts": 0,
+    },
+    {
+      "bestScore": undefined,
+      "canReopen": false,
+      "openAnswers": [],
+      "outcomeAchieved": {},
+      "passed": false,
+      "questionAnswers": [
+        "",
+        "",
+      ],
+      "student": {
+        "displayName": "Ana María del Pilar Guzmán Restrepo de la Hoz",
+        "email": "ana.maria.delpilar@fundacionwwbcol.org",
+        "id": "u-s4",
+        "lastSeen": "2026-08-11T14:30:00.000Z",
+        "role": "student",
+      },
+      "usedAttempts": 0,
+    },
+    {
+      "bestScore": undefined,
+      "canReopen": false,
+      "openAnswers": [],
+      "outcomeAchieved": {},
+      "passed": false,
+      "questionAnswers": [
+        "",
+        "",
+      ],
+      "student": {
+        "displayName": "Laura",
+        "email": "laura.mendez@fundacionwwbcol.org",
+        "id": "u-s5",
+        "lastSeen": "2026-08-13T08:00:00.000Z",
+        "role": "student",
+      },
+      "usedAttempts": 0,
+    },
+  ],
+}
+`;
+
+exports[`view-models del profesor > calificaciones — quiz 1`] = `
+{
+  "evaluation": {
+    "courseId": "c-estadistica",
+    "id": "e-quiz-s3",
+    "isActive": true,
+    "kind": "quiz",
+    "maxAttempts": 2,
+    "passingScore": 80,
+    "placementAfterModuleId": "m-s3-2",
+    "sessionId": "s3",
+    "title": "Quiz — Medidas de tendencia central",
+    "waitHours": 0,
+  },
+  "outcomes": [
+    {
+      "code": "RA1",
+      "evaluationId": "e-quiz-s3",
+      "expectedLevel": 60,
+      "id": "ra1",
+      "name": "Teoría básica",
+    },
+    {
+      "code": "RA2",
+      "evaluationId": "e-quiz-s3",
+      "expectedLevel": 70,
+      "id": "ra2",
+      "name": "Interpretación de resultados",
+    },
+  ],
+  "questionLabels": [
+    "P1: ¿Cuál medida de tendencia central es más sensible a valores extremos?",
+    "P2: ¿Cuáles de las siguientes son medidas de tendencia central?",
+    "P3: Explica con tus palabras cuándo preferirías la mediana sobre la media.",
+    "P4: Del 1 al 10, ¿qué tan segura te sientes interpretando estas medidas?",
+  ],
+  "rows": [
+    {
+      "bestScore": undefined,
+      "canReopen": false,
+      "openAnswers": [],
+      "outcomeAchieved": {},
+      "passed": false,
+      "questionAnswers": [
+        "",
+        "",
+        "",
+        "",
+      ],
+      "student": {
+        "displayName": "Valentina",
+        "email": "valentina.mendoza@fundacionwwbcol.org",
+        "id": "u-student",
+        "lastSeen": "2026-08-13T11:40:00.000Z",
+        "role": "student",
+      },
+      "usedAttempts": 0,
+    },
+    {
+      "bestScore": undefined,
+      "canReopen": false,
+      "openAnswers": [],
+      "outcomeAchieved": {},
+      "passed": false,
+      "questionAnswers": [
+        "",
+        "",
+        "",
+        "",
+      ],
+      "student": {
+        "displayName": "Juan Camilo",
+        "email": "juan.rojas@fundacionwwbcol.org",
+        "id": "u-s2",
+        "lastSeen": "2026-08-13T09:10:00.000Z",
+        "role": "student",
+      },
+      "usedAttempts": 0,
+    },
+    {
+      "bestScore": undefined,
+      "canReopen": false,
+      "openAnswers": [],
+      "outcomeAchieved": {},
+      "passed": false,
+      "questionAnswers": [
+        "",
+        "",
+        "",
+        "",
+      ],
+      "student": {
+        "displayName": "María Fernanda",
+        "email": "maria.gonzalez@fundacionwwbcol.org",
+        "id": "u-s3",
+        "lastSeen": "2026-08-12T18:00:00.000Z",
+        "role": "student",
+      },
+      "usedAttempts": 0,
+    },
+    {
+      "bestScore": undefined,
+      "canReopen": false,
+      "openAnswers": [],
+      "outcomeAchieved": {},
+      "passed": false,
+      "questionAnswers": [
+        "",
+        "",
+        "",
+        "",
+      ],
+      "student": {
+        "displayName": "Ana María del Pilar Guzmán Restrepo de la Hoz",
+        "email": "ana.maria.delpilar@fundacionwwbcol.org",
+        "id": "u-s4",
+        "lastSeen": "2026-08-11T14:30:00.000Z",
+        "role": "student",
+      },
+      "usedAttempts": 0,
+    },
+    {
+      "bestScore": undefined,
+      "canReopen": false,
+      "openAnswers": [],
+      "outcomeAchieved": {},
+      "passed": false,
+      "questionAnswers": [
+        "",
+        "",
+        "",
+        "",
+      ],
+      "student": {
+        "displayName": "Laura",
+        "email": "laura.mendez@fundacionwwbcol.org",
+        "id": "u-s5",
+        "lastSeen": "2026-08-13T08:00:00.000Z",
+        "role": "student",
+      },
+      "usedAttempts": 0,
+    },
+  ],
+}
+`;
+
+exports[`view-models del profesor > constructor de quiz 1`] = `
+{
+  "archetypes": [],
+  "course": {
+    "certificateDescription": "dominando las medidas de tendencia central y dispersión, y aprendiendo a interpretar datos de programas sociales con enfoque de desarrollo y género.",
+    "certificateDurationHours": 4,
+    "description": "Mide, describe e interpreta datos de programas sociales con enfoque de desarrollo y género.",
+    "enrollmentOpen": true,
+    "id": "c-estadistica",
+    "published": true,
+    "teacherName": "Diego Fercho",
+    "title": "Fundamentos de Estadística Descriptiva",
+  },
+  "evaluation": {
+    "courseId": "c-estadistica",
+    "id": "e-quiz-s3",
+    "isActive": true,
+    "kind": "quiz",
+    "maxAttempts": 2,
+    "passingScore": 80,
+    "placementAfterModuleId": "m-s3-2",
+    "sessionId": "s3",
+    "title": "Quiz — Medidas de tendencia central",
+    "waitHours": 0,
+  },
+  "optionsByQuestion": {
+    "q1": [
+      {
+        "id": "o1a",
+        "isCorrect": true,
+        "questionId": "q1",
+        "text": "La media",
+      },
+      {
+        "id": "o1b",
+        "isCorrect": false,
+        "questionId": "q1",
+        "text": "La mediana",
+      },
+      {
+        "id": "o1c",
+        "isCorrect": false,
+        "questionId": "q1",
+        "text": "La moda",
+      },
+    ],
+    "q2": [
+      {
+        "id": "o2a",
+        "isCorrect": true,
+        "questionId": "q2",
+        "text": "Media",
+      },
+      {
+        "id": "o2b",
+        "isCorrect": true,
+        "questionId": "q2",
+        "text": "Mediana",
+      },
+      {
+        "id": "o2c",
+        "isCorrect": false,
+        "questionId": "q2",
+        "text": "Desviación estándar",
+      },
+      {
+        "id": "o2d",
+        "isCorrect": true,
+        "questionId": "q2",
+        "text": "Moda",
+      },
+    ],
+    "q3": [],
+    "q4": [],
+  },
+  "outcomes": [
+    {
+      "code": "RA1",
+      "evaluationId": "e-quiz-s3",
+      "expectedLevel": 60,
+      "id": "ra1",
+      "name": "Teoría básica",
+    },
+    {
+      "code": "RA2",
+      "evaluationId": "e-quiz-s3",
+      "expectedLevel": 70,
+      "id": "ra2",
+      "name": "Interpretación de resultados",
+    },
+  ],
+  "questions": [
+    {
+      "evaluationId": "e-quiz-s3",
+      "id": "q1",
+      "order": 1,
+      "outcomeId": "ra1",
+      "points": 1,
+      "text": "¿Cuál medida de tendencia central es más sensible a valores extremos?",
+      "type": "single",
+    },
+    {
+      "evaluationId": "e-quiz-s3",
+      "id": "q2",
+      "order": 2,
+      "outcomeId": "ra1",
+      "points": 1,
+      "text": "¿Cuáles de las siguientes son medidas de tendencia central?",
+      "type": "multiple",
+    },
+    {
+      "evaluationId": "e-quiz-s3",
+      "id": "q3",
+      "order": 3,
+      "outcomeId": "ra2",
+      "points": 0,
+      "text": "Explica con tus palabras cuándo preferirías la mediana sobre la media.",
+      "type": "open",
+    },
+    {
+      "evaluationId": "e-quiz-s3",
+      "id": "q4",
+      "order": 4,
+      "outcomeId": "ra2",
+      "points": 0,
+      "text": "Del 1 al 10, ¿qué tan segura te sientes interpretando estas medidas?",
+      "type": "scale",
+    },
+  ],
+}
+`;
+
+exports[`view-models del profesor > dashboard — todos los cursos 1`] = `
+{
+  "activeCourses": 3,
+  "averageProgress": 10,
+  "courseRows": [
+    {
+      "avgProgress": 12,
+      "course": {
+        "certificateDescription": "dominando las medidas de tendencia central y dispersión, y aprendiendo a interpretar datos de programas sociales con enfoque de desarrollo y género.",
+        "certificateDurationHours": 4,
+        "description": "Mide, describe e interpreta datos de programas sociales con enfoque de desarrollo y género.",
+        "enrollmentOpen": true,
+        "id": "c-estadistica",
+        "published": true,
+        "teacherName": "Diego Fercho",
+        "title": "Fundamentos de Estadística Descriptiva",
+      },
+      "studentCount": 5,
+    },
+    {
+      "avgProgress": 0,
+      "course": {
+        "description": "Del cero a manipular datos con pandas para análisis territorial.",
+        "enrollmentOpen": true,
+        "id": "c-python",
+        "published": true,
+        "teacherName": "Valentina Vélez",
+        "title": "Introducción a Python para análisis",
+      },
+      "studentCount": 1,
+    },
+    {
+      "avgProgress": 0,
+      "course": {
+        "description": "Diseño de indicadores sensibles al género y lectura crítica de brechas.",
+        "enrollmentOpen": true,
+        "id": "c-genero",
+        "published": true,
+        "teacherName": "Valentina Vélez",
+        "title": "Análisis de datos con perspectiva de género",
+      },
+      "studentCount": 0,
+    },
+  ],
+  "distribution": {
+    "atRisk": 0,
+    "completed": 0,
+    "inProgress": 1,
+    "notStarted": 5,
+  },
+  "performanceByEvaluation": [
+    {
+      "attemptCount": 1,
+      "averageScore": 45,
+      "evaluationTitle": "Diagnóstico inicial",
+    },
+  ],
+  "quizzesTaken": 0,
+  "recentActivity": [
+    {
+      "at": "2026-07-10T00:40:00.000Z",
+      "detail": "45%",
+      "id": "att-att-diag-ini-1",
+      "label": "Valentina rindió Diagnóstico inicial",
+    },
+  ],
+  "totalStudents": 5,
+}
+`;
+
+exports[`view-models del profesor > dashboard — un curso 1`] = `
+{
+  "activeCourses": 1,
+  "averageProgress": 12,
+  "courseRows": [
+    {
+      "avgProgress": 12,
+      "course": {
+        "certificateDescription": "dominando las medidas de tendencia central y dispersión, y aprendiendo a interpretar datos de programas sociales con enfoque de desarrollo y género.",
+        "certificateDurationHours": 4,
+        "description": "Mide, describe e interpreta datos de programas sociales con enfoque de desarrollo y género.",
+        "enrollmentOpen": true,
+        "id": "c-estadistica",
+        "published": true,
+        "teacherName": "Diego Fercho",
+        "title": "Fundamentos de Estadística Descriptiva",
+      },
+      "studentCount": 5,
+    },
+  ],
+  "distribution": {
+    "atRisk": 0,
+    "completed": 0,
+    "inProgress": 1,
+    "notStarted": 4,
+  },
+  "performanceByEvaluation": [
+    {
+      "attemptCount": 1,
+      "averageScore": 45,
+      "evaluationTitle": "Diagnóstico inicial",
+    },
+  ],
+  "quizzesTaken": 0,
+  "recentActivity": [
+    {
+      "at": "2026-07-10T00:40:00.000Z",
+      "detail": "45%",
+      "id": "att-att-diag-ini-1",
+      "label": "Valentina rindió Diagnóstico inicial",
+    },
+  ],
+  "totalStudents": 5,
+}
+`;
+
+exports[`view-models del profesor > detalle de estudiante 1`] = `
+{
+  "courses": [
+    {
+      "course": {
+        "certificateDescription": "dominando las medidas de tendencia central y dispersión, y aprendiendo a interpretar datos de programas sociales con enfoque de desarrollo y género.",
+        "certificateDurationHours": 4,
+        "description": "Mide, describe e interpreta datos de programas sociales con enfoque de desarrollo y género.",
+        "enrollmentOpen": true,
+        "id": "c-estadistica",
+        "published": true,
+        "teacherName": "Diego Fercho",
+        "title": "Fundamentos de Estadística Descriptiva",
+      },
+      "enrolled": true,
+      "percent": 60,
+    },
+    {
+      "course": {
+        "description": "Del cero a manipular datos con pandas para análisis territorial.",
+        "enrollmentOpen": true,
+        "id": "c-python",
+        "published": true,
+        "teacherName": "Valentina Vélez",
+        "title": "Introducción a Python para análisis",
+      },
+      "enrolled": true,
+      "percent": 0,
+    },
+    {
+      "course": {
+        "description": "Diseño de indicadores sensibles al género y lectura crítica de brechas.",
+        "enrollmentOpen": true,
+        "id": "c-genero",
+        "published": true,
+        "teacherName": "Valentina Vélez",
+        "title": "Análisis de datos con perspectiva de género",
+      },
+      "enrolled": false,
+      "percent": 0,
+    },
+  ],
+  "profile": {
+    "apellidos": "Mendoza",
+    "area": "Investigación",
+    "cargo": "Gestoras/Gestores",
+    "completed": true,
+    "documentNumber": "1020304050",
+    "documentType": "CC",
+    "nombres": "Valentina",
+    "userId": "u-student",
+  },
+  "student": {
+    "displayName": "Valentina",
+    "email": "valentina.mendoza@fundacionwwbcol.org",
+    "id": "u-student",
+    "lastSeen": "2026-08-13T11:40:00.000Z",
+    "role": "student",
+  },
+}
+`;
+
+exports[`view-models del profesor > directorio de estudiantes 1`] = `
+[
+  {
+    "avgProgress": 30,
+    "courseCount": 2,
+    "profile": {
+      "apellidos": "Mendoza",
+      "area": "Investigación",
+      "cargo": "Gestoras/Gestores",
+      "completed": true,
+      "documentNumber": "1020304050",
+      "documentType": "CC",
+      "nombres": "Valentina",
+      "userId": "u-student",
+    },
+    "student": {
+      "displayName": "Valentina",
+      "email": "valentina.mendoza@fundacionwwbcol.org",
+      "id": "u-student",
+      "lastSeen": "2026-08-13T11:40:00.000Z",
+      "role": "student",
+    },
+  },
+  {
+    "avgProgress": 0,
+    "courseCount": 1,
+    "profile": undefined,
+    "student": {
+      "displayName": "Juan Camilo",
+      "email": "juan.rojas@fundacionwwbcol.org",
+      "id": "u-s2",
+      "lastSeen": "2026-08-13T09:10:00.000Z",
+      "role": "student",
+    },
+  },
+  {
+    "avgProgress": 0,
+    "courseCount": 1,
+    "profile": undefined,
+    "student": {
+      "displayName": "María Fernanda",
+      "email": "maria.gonzalez@fundacionwwbcol.org",
+      "id": "u-s3",
+      "lastSeen": "2026-08-12T18:00:00.000Z",
+      "role": "student",
+    },
+  },
+  {
+    "avgProgress": 0,
+    "courseCount": 1,
+    "profile": undefined,
+    "student": {
+      "displayName": "Ana María del Pilar Guzmán Restrepo de la Hoz",
+      "email": "ana.maria.delpilar@fundacionwwbcol.org",
+      "id": "u-s4",
+      "lastSeen": "2026-08-11T14:30:00.000Z",
+      "role": "student",
+    },
+  },
+  {
+    "avgProgress": 0,
+    "courseCount": 1,
+    "profile": undefined,
+    "student": {
+      "displayName": "Laura",
+      "email": "laura.mendez@fundacionwwbcol.org",
+      "id": "u-s5",
+      "lastSeen": "2026-08-13T08:00:00.000Z",
+      "role": "student",
+    },
+  },
+]
+`;
+
+exports[`view-models del profesor > editor de curso 1`] = `
+{
+  "availableStudents": [],
+  "course": {
+    "certificateDescription": "dominando las medidas de tendencia central y dispersión, y aprendiendo a interpretar datos de programas sociales con enfoque de desarrollo y género.",
+    "certificateDurationHours": 4,
+    "description": "Mide, describe e interpreta datos de programas sociales con enfoque de desarrollo y género.",
+    "enrollmentOpen": true,
+    "id": "c-estadistica",
+    "published": true,
+    "teacherName": "Diego Fercho",
+    "title": "Fundamentos de Estadística Descriptiva",
+  },
+  "diagnosticFinal": {
+    "courseId": "c-estadistica",
+    "id": "e-diag-fin",
+    "isActive": true,
+    "kind": "diagnostic_final",
+    "maxAttempts": 2,
+    "passingScore": 80,
+    "title": "Diagnóstico final",
+    "waitHours": 8,
+  },
+  "diagnosticInitial": {
+    "courseId": "c-estadistica",
+    "id": "e-diag-ini",
+    "isActive": true,
+    "kind": "diagnostic_initial",
+    "maxAttempts": 1,
+    "title": "Diagnóstico inicial",
+    "waitHours": 0,
+  },
+  "enrolledStudents": [
+    {
+      "displayName": "Valentina",
+      "email": "valentina.mendoza@fundacionwwbcol.org",
+      "id": "u-student",
+      "lastSeen": "2026-08-13T11:40:00.000Z",
+      "role": "student",
+    },
+    {
+      "displayName": "Juan Camilo",
+      "email": "juan.rojas@fundacionwwbcol.org",
+      "id": "u-s2",
+      "lastSeen": "2026-08-13T09:10:00.000Z",
+      "role": "student",
+    },
+    {
+      "displayName": "María Fernanda",
+      "email": "maria.gonzalez@fundacionwwbcol.org",
+      "id": "u-s3",
+      "lastSeen": "2026-08-12T18:00:00.000Z",
+      "role": "student",
+    },
+    {
+      "displayName": "Ana María del Pilar Guzmán Restrepo de la Hoz",
+      "email": "ana.maria.delpilar@fundacionwwbcol.org",
+      "id": "u-s4",
+      "lastSeen": "2026-08-11T14:30:00.000Z",
+      "role": "student",
+    },
+    {
+      "displayName": "Laura",
+      "email": "laura.mendez@fundacionwwbcol.org",
+      "id": "u-s5",
+      "lastSeen": "2026-08-13T08:00:00.000Z",
+      "role": "student",
+    },
+  ],
+  "interestOnboarding": undefined,
+  "sessions": [
+    {
+      "modules": [
+        {
+          "context": "course",
+          "description": "El punto de partida: de la realidad social al dato.",
+          "durationMin": 4,
+          "id": "m-s1-1",
+          "order": 1,
+          "sessionId": "s1",
+          "title": "¿Qué es un dato?",
+          "type": "video",
+          "videoUrl": "https://www.youtube.com/embed/dQw4w9WgXcQ",
+        },
+      ],
+      "quiz": undefined,
+      "session": {
+        "courseId": "c-estadistica",
+        "id": "s1",
+        "order": 1,
+        "title": "Introducción y ecosistema de datos",
+        "unlockDate": "2026-07-15T00:00:00.000Z",
+      },
+    },
+    {
+      "modules": [
+        {
+          "context": "course",
+          "description": "Clasifica variables de un dataset real.",
+          "durationMin": 6,
+          "id": "m-s2-1",
+          "order": 1,
+          "sessionId": "s2",
+          "title": "Tipos de variables (interactivo)",
+          "type": "html",
+        },
+      ],
+      "quiz": undefined,
+      "session": {
+        "courseId": "c-estadistica",
+        "id": "s2",
+        "order": 2,
+        "title": "Estadística en el trabajo social",
+        "unlockDate": "2026-07-22T00:00:00.000Z",
+      },
+    },
+    {
+      "modules": [
+        {
+          "context": "course",
+          "description": "Calcula e interpreta las tres medidas de tendencia central con datos reales de encuestas territoriales de la Fundación.",
+          "durationMin": 4,
+          "id": "m-s3-1",
+          "order": 1,
+          "sessionId": "s3",
+          "title": "Media, mediana y moda en acción",
+          "type": "video",
+          "videoUrl": "https://www.youtube.com/embed/dQw4w9WgXcQ",
+        },
+        {
+          "context": "course",
+          "description": "Recurso interactivo: ingresa un conjunto de datos y observa cómo cambian los percentiles.",
+          "durationMin": 8,
+          "id": "m-s3-2",
+          "order": 2,
+          "sessionId": "s3",
+          "title": "Calculadora de percentiles",
+          "type": "html",
+        },
+      ],
+      "quiz": {
+        "courseId": "c-estadistica",
+        "id": "e-quiz-s3",
+        "isActive": true,
+        "kind": "quiz",
+        "maxAttempts": 2,
+        "passingScore": 80,
+        "placementAfterModuleId": "m-s3-2",
+        "sessionId": "s3",
+        "title": "Quiz — Medidas de tendencia central",
+        "waitHours": 0,
+      },
+      "session": {
+        "courseId": "c-estadistica",
+        "id": "s3",
+        "order": 3,
+        "title": "Medidas de tendencia central",
+        "unlockDate": "2026-07-29T00:00:00.000Z",
+      },
+    },
+    {
+      "modules": [
+        {
+          "context": "course",
+          "description": "Qué tan dispersos están los datos.",
+          "durationMin": 4,
+          "id": "m-s4-1",
+          "order": 1,
+          "sessionId": "s4",
+          "title": "Rango, varianza y desviación",
+          "type": "video",
+          "videoUrl": "https://www.youtube.com/embed/dQw4w9WgXcQ",
+        },
+      ],
+      "quiz": undefined,
+      "session": {
+        "courseId": "c-estadistica",
+        "id": "s4",
+        "order": 4,
+        "title": "Dispersión y variabilidad",
+        "unlockDate": "2026-09-15T00:00:00.000Z",
+      },
+    },
+    {
+      "modules": [],
+      "quiz": undefined,
+      "session": {
+        "courseId": "c-estadistica",
+        "id": "s5",
+        "order": 5,
+        "title": "Visualización y storytelling",
+        "unlockDate": "2026-09-29T00:00:00.000Z",
+      },
+    },
+  ],
+}
+`;
+
+exports[`view-models del profesor > lista de cursos 1`] = `
+[
+  {
+    "avgProgress": 12,
+    "course": {
+      "certificateDescription": "dominando las medidas de tendencia central y dispersión, y aprendiendo a interpretar datos de programas sociales con enfoque de desarrollo y género.",
+      "certificateDurationHours": 4,
+      "description": "Mide, describe e interpreta datos de programas sociales con enfoque de desarrollo y género.",
+      "enrollmentOpen": true,
+      "id": "c-estadistica",
+      "published": true,
+      "teacherName": "Diego Fercho",
+      "title": "Fundamentos de Estadística Descriptiva",
+    },
+    "studentCount": 5,
+  },
+  {
+    "avgProgress": 0,
+    "course": {
+      "description": "Del cero a manipular datos con pandas para análisis territorial.",
+      "enrollmentOpen": true,
+      "id": "c-python",
+      "published": true,
+      "teacherName": "Valentina Vélez",
+      "title": "Introducción a Python para análisis",
+    },
+    "studentCount": 1,
+  },
+  {
+    "avgProgress": 0,
+    "course": {
+      "description": "Diseño de indicadores sensibles al género y lectura crítica de brechas.",
+      "enrollmentOpen": true,
+      "id": "c-genero",
+      "published": true,
+      "teacherName": "Valentina Vélez",
+      "title": "Análisis de datos con perspectiva de género",
+    },
+    "studentCount": 0,
+  },
+]
+`;
+
+exports[`view-models del profesor > progreso por curso 1`] = `
+[
+  {
+    "completed": 3,
+    "percent": 60,
+    "student": {
+      "displayName": "Valentina",
+      "email": "valentina.mendoza@fundacionwwbcol.org",
+      "id": "u-student",
+      "lastSeen": "2026-08-13T11:40:00.000Z",
+      "role": "student",
+    },
+    "total": 5,
+  },
+  {
+    "completed": 0,
+    "percent": 0,
+    "student": {
+      "displayName": "Juan Camilo",
+      "email": "juan.rojas@fundacionwwbcol.org",
+      "id": "u-s2",
+      "lastSeen": "2026-08-13T09:10:00.000Z",
+      "role": "student",
+    },
+    "total": 5,
+  },
+  {
+    "completed": 0,
+    "percent": 0,
+    "student": {
+      "displayName": "María Fernanda",
+      "email": "maria.gonzalez@fundacionwwbcol.org",
+      "id": "u-s3",
+      "lastSeen": "2026-08-12T18:00:00.000Z",
+      "role": "student",
+    },
+    "total": 5,
+  },
+  {
+    "completed": 0,
+    "percent": 0,
+    "student": {
+      "displayName": "Ana María del Pilar Guzmán Restrepo de la Hoz",
+      "email": "ana.maria.delpilar@fundacionwwbcol.org",
+      "id": "u-s4",
+      "lastSeen": "2026-08-11T14:30:00.000Z",
+      "role": "student",
+    },
+    "total": 5,
+  },
+  {
+    "completed": 0,
+    "percent": 0,
+    "student": {
+      "displayName": "Laura",
+      "email": "laura.mendez@fundacionwwbcol.org",
+      "id": "u-s5",
+      "lastSeen": "2026-08-13T08:00:00.000Z",
+      "role": "student",
+    },
+    "total": 5,
+  },
+]
+`;
+
+exports[`view-models del profesor > tutoriales 1`] = `
+[
+  {
+    "quiz": undefined,
+    "tutorial": {
+      "context": "tutorial",
+      "description": "Un repaso veloz de las operaciones más usadas.",
+      "durationMin": 4,
+      "id": "t-1",
+      "order": 1,
+      "sessionId": null,
+      "title": "Manipulación de datos con pandas",
+      "type": "video",
+      "videoUrl": "https://www.youtube.com/embed/dQw4w9WgXcQ",
+    },
+  },
+  {
+    "quiz": undefined,
+    "tutorial": {
+      "context": "tutorial",
+      "description": "Interactivo: arma el Índice de Desarrollo Humano.",
+      "durationMin": 25,
+      "id": "t-2",
+      "order": 2,
+      "sessionId": null,
+      "title": "Cálculo del IDH paso a paso",
+      "type": "html",
+    },
+  },
+]
+`;

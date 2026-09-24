@@ -15,12 +15,14 @@ import type {
   Certificate,
   Challenge,
   ChallengeAttempt,
-  CommunityLike,
   CommunityPost,
+  CommunityPostWithStats,
   CommunityReply,
   Course,
+  CourseStructure,
   Enrollment,
   Evaluation,
+  EvaluationDetail,
   LearningOutcome,
   Message,
   Module,
@@ -36,8 +38,7 @@ import type {
 } from "@/lib/domain/types";
 
 export interface Repository {
-  // Identidad ---------------------------------------------------------------
-  getCurrentUser(): Promise<User | null>;
+  // Identidad (el usuario de la sesión lo resuelve AuthContext) -------------
   getUserById(id: string): Promise<User | null>;
   listUsersByRole(role: User["role"]): Promise<User[]>;
   /** Al completar el onboarding, sincroniza el nombre real (nombres + apellidos) — sin esto, User.displayName se queda pegado al valor con el que se creó la cuenta. */
@@ -57,11 +58,12 @@ export interface Repository {
   listSessions(courseId: string): Promise<Session[]>;
   createSession(session: Session): Promise<Session>;
   updateSession(session: Session): Promise<Session>;
+  /** Módulos de una sesión, en orden, SIN `contentHtml` (ver `getModuleContent`). */
   listModules(sessionId: string): Promise<Module[]>;
   createModule(module: Module): Promise<Module>;
   updateModule(module: Module): Promise<Module>;
+  /** Tutoriales sueltos, en orden, SIN `contentHtml` (ver `getModuleContent`). */
   listTutorials(): Promise<Module[]>;
-  getModule(moduleId: string): Promise<Module | null>;
 
   // Inscripción / progreso --------------------------------------------------
   listEnrollments(userId: string): Promise<Enrollment[]>;
@@ -73,16 +75,13 @@ export interface Repository {
 
   // Evaluaciones ------------------------------------------------------------
   listEvaluations(courseId: string): Promise<Evaluation[]>;
-  getEvaluation(evaluationId: string): Promise<Evaluation | null>;
   createEvaluation(evaluation: Evaluation): Promise<Evaluation>;
   /** Quiz de un tutorial suelto (kind === 'tutorial_quiz'), si el profesor le puso uno. */
   getTutorialQuiz(tutorialModuleId: string): Promise<Evaluation | undefined>;
   updateEvaluation(evaluation: Evaluation): Promise<Evaluation>;
   listOutcomes(evaluationId: string): Promise<LearningOutcome[]>;
   createOutcome(outcome: LearningOutcome): Promise<LearningOutcome>;
-  listQuestions(evaluationId: string): Promise<Question[]>;
   createQuestion(question: Question): Promise<Question>;
-  listOptions(questionId: string): Promise<QuestionOption[]>;
   createOption(option: QuestionOption): Promise<QuestionOption>;
 
   // Arquetipos (onboarding de intereses por curso) ---------------------------
@@ -93,10 +92,7 @@ export interface Repository {
   // Intentos / respuestas ---------------------------------------------------
   listAttempts(userId: string, evaluationId: string): Promise<Attempt[]>;
   listAttemptsByEvaluation(evaluationId: string): Promise<Attempt[]>;
-  createAttempt(attempt: Attempt): Promise<Attempt>;
-  saveAnswers(answers: Answer[]): Promise<void>;
   listAnswers(attemptId: string): Promise<Answer[]>;
-  saveOutcomeScores(scores: OutcomeScore[]): Promise<void>;
   listOutcomeScores(attemptId: string): Promise<OutcomeScore[]>;
   /** Intentos extra que el profesor otorga manualmente (spec §5.11 "reabrir intentos"). */
   getBonusAttempts(userId: string, evaluationId: string): Promise<number>;
@@ -107,10 +103,8 @@ export interface Repository {
   sendMessage(message: Message): Promise<Message>;
   markConversationRead(userId: string, otherUserId: string): Promise<void>;
 
-  // Comunidad (posts públicos, likes, respuestas) ----------------------------
-  listCommunityPosts(): Promise<CommunityPost[]>;
+  // Comunidad (posts públicos, likes, respuestas; el feed va en listCommunityFeed)
   createCommunityPost(post: CommunityPost): Promise<CommunityPost>;
-  listCommunityLikes(postId: string): Promise<CommunityLike[]>;
   /** Alterna el like de userId sobre postId; devuelve el estado resultante. */
   toggleCommunityLike(
     postId: string,
@@ -150,4 +144,45 @@ export interface Repository {
 
   // Derivados ---------------------------------------------------------------
   listCalendarEvents(userId: string): Promise<CalendarEvent[]>;
+
+  // Lecturas y escrituras en bloque (M10 · F4) -------------------------------
+  // Regla: ningún view-model consulta dentro de un bucle. Si una pantalla
+  // necesita "lo mismo para cada sesión/estudiante/pregunta", se pide todo
+  // junto con uno de estos métodos (una consulta, sin importar cuántos haya).
+
+  /** Estructura de varios cursos en una consulta (módulos sin HTML). Los ids que no existen se omiten. */
+  getCourseStructures(courseIds: string[]): Promise<CourseStructure[]>;
+  /** Lo único que las listas no traen: el HTML (y la URL de video) de un módulo. */
+  getModuleContent(moduleId: string): Promise<Pick<Module, "contentHtml" | "videoUrl"> | null>;
+  /** Evaluación con preguntas, opciones y resultados de aprendizaje, en una consulta. */
+  getEvaluationDetail(evaluationId: string): Promise<EvaluationDetail | null>;
+  /** Evaluaciones `tutorial_quiz` de todos los tutoriales. */
+  listTutorialQuizzes(): Promise<Evaluation[]>;
+  listUsersByIds(ids: string[]): Promise<User[]>;
+  /** Todas las inscripciones (panel del profesor). */
+  listAllEnrollments(): Promise<Enrollment[]>;
+  listModuleProgressForUsers(userIds: string[]): Promise<ModuleProgress[]>;
+  /** Todos los intentos del usuario, en todas sus evaluaciones. */
+  listAttemptsByUser(userId: string): Promise<Attempt[]>;
+  listAttemptsByEvaluations(evaluationIds: string[]): Promise<Attempt[]>;
+  /** Intentos extra del usuario: evaluationId → cantidad. */
+  listBonusAttemptsByUser(userId: string): Promise<Record<string, number>>;
+  /** Intentos extra de una evaluación: userId → cantidad. */
+  listBonusAttemptsByEvaluation(evaluationId: string): Promise<Record<string, number>>;
+  listAnswersByAttempts(attemptIds: string[]): Promise<Answer[]>;
+  listOutcomeScoresByAttempts(attemptIds: string[]): Promise<OutcomeScore[]>;
+  countUnreadMessages(userId: string): Promise<number>;
+  /** Feed de Comunidad con autor, likes y conteo de respuestas, en una consulta. */
+  listCommunityFeed(): Promise<CommunityPostWithStats[]>;
+  /**
+   * Ids de quienes pidieron ocultar su nombre en Comunidad
+   * (`showNameInCommunity === false`). Visible para cualquier autenticado:
+   * es lo único del perfil que otra persona necesita para respetar la
+   * preferencia (0008_community_privacy.sql).
+   */
+  listHiddenCommunityAuthorIds(): Promise<string[]>;
+  /** Intento enviado, completo o nada: intento + respuestas + resultados por RA. */
+  submitAttempt(attempt: Attempt, answers: Answer[], outcomeScores: OutcomeScore[]): Promise<void>;
+  /** Varios mensajes en una escritura (envío a todo un curso). */
+  sendMessages(messages: Message[]): Promise<void>;
 }

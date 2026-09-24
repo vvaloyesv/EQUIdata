@@ -16,13 +16,15 @@ export interface TeacherTutorialVM {
 export async function buildTeacherTutorialsView(
   repo: Repository,
 ): Promise<TeacherTutorialVM[]> {
-  const tutorials = await repo.listTutorials();
-  const out: TeacherTutorialVM[] = [];
-  for (const tutorial of tutorials) {
-    const quiz = await repo.getTutorialQuiz(tutorial.id);
-    out.push({ tutorial, quiz });
-  }
-  return out;
+  // M10 · F4: tutoriales y sus quizzes en dos consultas paralelas (antes, una por tutorial).
+  const [tutorials, quizzes] = await Promise.all([
+    repo.listTutorials(),
+    repo.listTutorialQuizzes(),
+  ]);
+  return tutorials.map((tutorial) => ({
+    tutorial,
+    quiz: quizzes.find((q) => q.tutorialModuleId === tutorial.id),
+  }));
 }
 
 export interface TeacherTutorialQuizVM {
@@ -36,21 +38,20 @@ export async function buildTeacherTutorialQuizView(
   repo: Repository,
   evaluationId: string,
 ): Promise<TeacherTutorialQuizVM> {
-  const evaluation = await repo.getEvaluation(evaluationId);
-  if (!evaluation) throw new Error(`Evaluación no encontrada: ${evaluationId}`);
+  const [detail, tutorials] = await Promise.all([
+    repo.getEvaluationDetail(evaluationId),
+    // La lista (sin HTML) basta: el constructor solo muestra el título del tutorial.
+    repo.listTutorials(),
+  ]);
+  if (!detail) throw new Error(`Evaluación no encontrada: ${evaluationId}`);
+  const { evaluation, questions, optionsByQuestion } = detail;
   if (!evaluation.tutorialModuleId) {
     throw new Error(`Evaluación sin tutorial asociado: ${evaluationId}`);
   }
 
-  const tutorial = await repo.getModule(evaluation.tutorialModuleId);
+  const tutorial = tutorials.find((t) => t.id === evaluation.tutorialModuleId);
   if (!tutorial) {
     throw new Error(`Tutorial no encontrado: ${evaluation.tutorialModuleId}`);
-  }
-
-  const questions = await repo.listQuestions(evaluationId);
-  const optionsByQuestion: Record<string, QuestionOption[]> = {};
-  for (const q of questions) {
-    optionsByQuestion[q.id] = await repo.listOptions(q.id);
   }
 
   return { tutorial, evaluation, questions, optionsByQuestion };

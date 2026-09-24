@@ -4,7 +4,7 @@ import { Suspense, use, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ShieldCheck, Copy, Check } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { useAsync } from "@/lib/useAsync";
+import { useRepoQuery } from "@/lib/query";
 import { getRepository } from "@/lib/data";
 import { buildCourseView } from "@/lib/student/course";
 import { getOrIssueCertificate } from "@/lib/student/certificate";
@@ -39,19 +39,26 @@ function CertificatePageInner({
   const [generating, setGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const { data, loading } = useAsync(async () => {
-    if (!user) return null;
-    const repo = getRepository();
-    const nowIso = new Date().toISOString();
-    const vm = await buildCourseView(repo, user.id, courseId, nowIso);
-    const certificate = await getOrIssueCertificate(
-      repo,
-      user.id,
-      courseId,
-      nowIso,
-    );
-    return { vm, certificate };
-  }, [user?.id, courseId]);
+  const userId = user?.id ?? "";
+  const { data, loading } = useRepoQuery(
+    ["certificate-page", userId, courseId],
+    async () => {
+      const repo = getRepository();
+      const nowIso = new Date().toISOString();
+      const [vm, existing] = await Promise.all([
+        buildCourseView(repo, userId, courseId, nowIso),
+        repo.getCertificate(userId, courseId),
+      ]);
+      // Solo se emite (y se vuelve a validar) si todavía no existe y ya es elegible.
+      const certificate =
+        existing ??
+        (vm.certificateEligible
+          ? await getOrIssueCertificate(repo, userId, courseId, nowIso)
+          : null);
+      return { vm, certificate };
+    },
+    { enabled: !!user },
+  );
 
   if (loading || !data) {
     return (

@@ -2,10 +2,13 @@
  * Ensambla el feed de Comunidad: cada post con su autor real, conteo de
  * likes, si ya le diste like, y cuántas respuestas tiene. Compartido entre
  * la vista del estudiante y la del profesor — ambos ven el mismo feed.
+ *
+ * M10 · F4: el feed completo llega en una consulta (`listCommunityFeed`);
+ * antes eran 4 por publicación.
  */
 
 import type { Repository } from "@/lib/data/repository";
-import type { CommunityPost } from "@/lib/domain/types";
+import type { CommunityPost, CommunityReply } from "@/lib/domain/types";
 
 export interface CommunityPostVM {
   post: CommunityPost;
@@ -15,47 +18,54 @@ export interface CommunityPostVM {
   replyCount: number;
 }
 
+/** Nombre que se muestra cuando la persona pidió ocultar el suyo en Comunidad. */
+const HIDDEN_NAME = "Estudiante EQUIdata";
+
+export interface CommunityReplyVM {
+  reply: CommunityReply;
+  authorName: string;
+}
+
 /**
- * Nombre a mostrar para el autor de un post/respuesta, respetando su
+ * Respuestas de una publicación con el nombre de cada autor, respetando su
  * preferencia de privacidad (`StudentProfile.showNameInCommunity`). Solo
  * aplica a estudiantes: si no tiene perfil (p. ej. el profesor), se muestra
- * su nombre real siempre.
+ * su nombre real siempre. Tres lecturas, sin importar cuántas respuestas
+ * haya (antes, dos por respuesta).
  */
-export async function resolveCommunityDisplayName(
+export async function buildReplyThread(
   repo: Repository,
-  authorId: string,
-): Promise<string> {
-  const [user, profile] = await Promise.all([
-    repo.getUserById(authorId),
-    repo.getStudentProfile(authorId),
+  postId: string,
+): Promise<CommunityReplyVM[]> {
+  const replies = await repo.listCommunityReplies(postId);
+  const authorIds = [...new Set(replies.map((r) => r.authorId))];
+  // Solo quiénes ocultan su nombre — no los perfiles completos (que además
+  // la RLS no deja ver a otras estudiantes).
+  const [authors, hiddenIds] = await Promise.all([
+    repo.listUsersByIds(authorIds),
+    repo.listHiddenCommunityAuthorIds(),
   ]);
-  if (profile && profile.showNameInCommunity === false) {
-    return "Estudiante EQUIdata";
-  }
-  return user?.displayName ?? "Alguien";
+  const hidden = new Set(hiddenIds);
+  return replies.map((reply) => ({
+    reply,
+    authorName: hidden.has(reply.authorId)
+      ? HIDDEN_NAME
+      : (authors.find((u) => u.id === reply.authorId)?.displayName ?? "Alguien"),
+  }));
 }
 
 export async function buildCommunityFeed(
   repo: Repository,
   userId: string,
 ): Promise<CommunityPostVM[]> {
-  const posts = await repo.listCommunityPosts();
-  const out: CommunityPostVM[] = [];
-  for (const post of posts) {
-    const [authorName, likes, replies] = await Promise.all([
-      resolveCommunityDisplayName(repo, post.authorId),
-      repo.listCommunityLikes(post.id),
-      repo.listCommunityReplies(post.id),
-    ]);
-    out.push({
-      post,
-      authorName,
-      likeCount: likes.length,
-      likedByMe: likes.some((l) => l.userId === userId),
-      replyCount: replies.length,
-    });
-  }
-  return out;
+  const feed = await repo.listCommunityFeed();
+  return feed.map((item) => ({
+    post: item.post,
+    authorName: item.authorHidesName ? HIDDEN_NAME : item.authorDisplayName,
+    likeCount: item.likeUserIds.length,
+    likedByMe: item.likeUserIds.includes(userId),
+    replyCount: item.replyCount,
+  }));
 }
 
 export type PostColor = "navy" | "coral" | "lime" | "lavender" | "warning";

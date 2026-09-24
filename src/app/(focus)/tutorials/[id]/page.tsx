@@ -1,11 +1,11 @@
 "use client";
 
-import { use, useState } from "react";
+import { use } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ClipboardCheck } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { useAsync } from "@/lib/useAsync";
+import { useRefresh, useRepoQuery } from "@/lib/query";
 import { getRepository } from "@/lib/data";
 import { ModuleViewer } from "@/components/student/ModuleViewer";
 import { FocusTopBar } from "@/components/student/FocusTopBar";
@@ -20,18 +20,26 @@ export default function TutorialDetailPage({
   const { id } = use(params);
   const router = useRouter();
   const { user } = useAuth();
-  const [reloadKey, setReloadKey] = useState(0);
+  const refresh = useRefresh();
+  const userId = user?.id ?? "";
 
-  const { data, loading } = useAsync(async () => {
-    const repo = getRepository();
-    const tutorials = await repo.listTutorials();
-    const tutorial = tutorials.find((t) => t.id === id) ?? null;
-    if (!tutorial || !user) return null;
-    const progress = await repo.listModuleProgress(user.id);
-    const completed = progress.some((p) => p.moduleId === id && p.completed);
-    const quiz = await repo.getTutorialQuiz(id);
-    return { tutorial, completed, tutorials, quiz };
-  }, [id, user?.id, reloadKey]);
+  const { data, loading } = useRepoQuery(
+    ["tutorial-page", userId, id],
+    async () => {
+      const repo = getRepository();
+      // Tres lecturas en paralelo; el HTML del tutorial lo pide ModuleViewer al abrirlo.
+      const [tutorials, progress, quiz] = await Promise.all([
+        repo.listTutorials(),
+        repo.listModuleProgress(userId),
+        repo.getTutorialQuiz(id),
+      ]);
+      const tutorial = tutorials.find((t) => t.id === id) ?? null;
+      if (!tutorial) return null;
+      const completed = progress.some((p) => p.moduleId === id && p.completed);
+      return { tutorial, completed, tutorials, quiz };
+    },
+    { enabled: !!user },
+  );
 
   if (loading || !data?.tutorial) {
     return (
@@ -54,7 +62,7 @@ export default function TutorialDetailPage({
       completed: true,
       completedAt: new Date().toISOString(),
     });
-    setReloadKey((k) => k + 1);
+    await refresh();
   }
 
   return (

@@ -41,28 +41,28 @@ export async function buildEvaluationView(
   evaluationId: string,
   nowIso: string,
 ): Promise<EvaluationVM> {
-  const evaluation = await repo.getEvaluation(evaluationId);
-  if (!evaluation) throw new Error(`Evaluación no encontrada: ${evaluationId}`);
+  // M10 · F4: preguntas + opciones + RA en una consulta, en paralelo con los
+  // intentos de la persona; antes era una consulta por pregunta.
+  const [detail, attempts, bonusAttempts, progress] = await Promise.all([
+    repo.getEvaluationDetail(evaluationId),
+    repo.listAttempts(userId, evaluationId),
+    repo.getBonusAttempts(userId, evaluationId),
+    repo.listModuleProgress(userId),
+  ]);
+  if (!detail) throw new Error(`Evaluación no encontrada: ${evaluationId}`);
+  const { evaluation, questions, optionsByQuestion, outcomes } = detail;
 
-  const questions = await repo.listQuestions(evaluationId);
-  const outcomes = await repo.listOutcomes(evaluationId);
-  const archetypes = evaluation.courseId
-    ? await repo.listArchetypes(evaluation.courseId)
-    : [];
+  const isSessionQuiz = evaluation.kind === "quiz" && !!evaluation.sessionId;
+  const [archetypes, sessionModules] = await Promise.all([
+    evaluation.courseId ? repo.listArchetypes(evaluation.courseId) : Promise.resolve([]),
+    isSessionQuiz ? repo.listModules(evaluation.sessionId!) : Promise.resolve([]),
+  ]);
 
-  const optionsByQuestion: Record<string, QuestionOption[]> = {};
-  for (const q of questions) {
-    optionsByQuestion[q.id] = await repo.listOptions(q.id);
-  }
-
-  const attempts = await repo.listAttempts(userId, evaluationId);
-  const bonusAttempts = await repo.getBonusAttempts(userId, evaluationId);
   const gate = attemptGate({ evaluation, attempts, nowIso, bonusAttempts });
 
   let modulesGate: { ok: boolean; reasonLabel?: string } = { ok: true };
-  if (evaluation.kind === "quiz" && evaluation.sessionId) {
-    const modules = await repo.listModules(evaluation.sessionId);
-    const progress = await repo.listModuleProgress(userId);
+  if (isSessionQuiz) {
+    const modules = sessionModules;
     const completedIds = new Set(
       progress.filter((p) => p.completed).map((p) => p.moduleId),
     );
@@ -137,8 +137,10 @@ export async function getBaselineByOutcomeCode(
     .sort((a, b) => (b.submittedAt ?? "").localeCompare(a.submittedAt ?? ""));
   if (!submitted.length) return {};
 
-  const scores = await repo.listOutcomeScores(submitted[0].id);
-  const outcomes = await repo.listOutcomes(diagInitial.id);
+  const [scores, outcomes] = await Promise.all([
+    repo.listOutcomeScores(submitted[0].id),
+    repo.listOutcomes(diagInitial.id),
+  ]);
   const codeById = new Map(outcomes.map((o) => [o.id, o.code]));
 
   const baseline: Record<string, number> = {};

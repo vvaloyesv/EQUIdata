@@ -1,18 +1,18 @@
 /**
- * Protección de rutas server-side (solo aplica en modo Supabase — en modo
- * mock la sesión vive en memoria del cliente y este middleware no puede
- * verla, así que no hace nada; `useRequireAuth` sigue siendo el único gate
- * en ese modo, igual que hoy).
+ * Protección de rutas server-side. `useRequireAuth` redirige recién después
+ * de hidratar, dejando pasar el primer render sin ningún chequeo; aquí el
+ * chequeo ocurre antes de que la página llegue al navegador.
  *
- * Reemplaza la ausencia total de protección server-side de antes: hoy
- * `useRequireAuth` redirige recién después de hidratar, dejando pasar el
- * primer render sin ningún chequeo. Aquí el chequeo ocurre antes de que la
- * página llegue al navegador.
+ * Corre en cada navegación, así que no debe consultar la base (M10 · F2):
+ * `getClaims()` valida el token (localmente si el proyecto usa llaves de
+ * firma asimétricas) y el rol viaja en el claim `user_role` que agrega el
+ * Custom Access Token Hook. Si el hook aún no está activo, `resolveRole` cae
+ * a una consulta a `profiles`.
  */
 
 import { NextResponse, type NextRequest } from "next/server";
 import { createMiddlewareClient } from "@/lib/supabase/server";
-import { isSupabaseMode } from "@/lib/data/dataSource";
+import { resolveRole } from "@/lib/auth/role";
 
 const STUDENT_PATHS = [
   "/dashboard",
@@ -24,6 +24,7 @@ const STUDENT_PATHS = [
   "/challenges",
   "/tutorials",
   "/certifications",
+  "/settings",
 ];
 
 function matchesPrefix(pathname: string, prefixes: string[]): boolean {
@@ -31,8 +32,6 @@ function matchesPrefix(pathname: string, prefixes: string[]): boolean {
 }
 
 export async function middleware(request: NextRequest) {
-  if (!isSupabaseMode()) return NextResponse.next();
-
   const { pathname } = request.nextUrl;
   const isStudentPath = matchesPrefix(pathname, STUDENT_PATHS);
   const isTeacherPath = pathname === "/teacher" || pathname.startsWith("/teacher/");
@@ -42,28 +41,20 @@ export async function middleware(request: NextRequest) {
   }
 
   const { supabase, response } = createMiddlewareClient(request);
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data } = await supabase.auth.getClaims();
+  const claims = data?.claims;
+  const userId = typeof claims?.sub === "string" ? claims.sub : null;
 
-  if (!user) {
+  if (!userId) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  if (isStudentPath || isTeacherPath) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single();
-
-    const role = profile?.role;
-    if (isTeacherPath && role !== "teacher") {
-      return NextResponse.redirect(new URL("/dashboard", request.url));
-    }
-    if (isStudentPath && role !== "student") {
-      return NextResponse.redirect(new URL("/teacher/dashboard", request.url));
-    }
+  const role = await resolveRole(supabase, userId, claims);
+  if (isTeacherPath && role !== "teacher") {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
+  }
+  if (isStudentPath && role !== "student") {
+    return NextResponse.redirect(new URL("/teacher/dashboard", request.url));
   }
 
   return response;

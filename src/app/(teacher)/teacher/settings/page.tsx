@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { X } from "lucide-react";
-import { useAsync } from "@/lib/useAsync";
+import { queryKeys, useRefresh, useRepoQuery } from "@/lib/query";
 import { getRepository } from "@/lib/data";
 import { CARGO_OPTIONS } from "@/lib/brand/lists";
 import { Card } from "@/components/ui/Card";
@@ -81,15 +81,14 @@ function OptionsCard({
 }
 
 export default function TeacherSettingsPage() {
-  const [reloadKey, setReloadKey] = useState(0);
+  const refresh = useRefresh();
+  const reload = () => void refresh();
   const [addingField, setAddingField] = useState(false);
-  const { data: areaOptions } = useAsync(
-    () => getRepository().listAreaOptions(),
-    [reloadKey],
+  const { data: areaOptions } = useRepoQuery(queryKeys.areaOptions(), () =>
+    getRepository().listAreaOptions(),
   );
-  const { data: onboardingFields } = useAsync(
-    () => getRepository().listOnboardingFields(),
-    [reloadKey],
+  const { data: onboardingFields } = useRepoQuery(queryKeys.onboardingFields(), () =>
+    getRepository().listOnboardingFields(),
   );
 
   async function addField(data: OnboardingFieldSubmitData) {
@@ -99,12 +98,12 @@ export default function TeacherSettingsPage() {
       ...data,
     });
     setAddingField(false);
-    setReloadKey((k) => k + 1);
+    reload();
   }
 
   async function removeField(id: string) {
     await getRepository().removeOnboardingField(id);
-    setReloadKey((k) => k + 1);
+    reload();
   }
 
   return (
@@ -132,11 +131,11 @@ export default function TeacherSettingsPage() {
           options={areaOptions ?? []}
           onAdd={async (v) => {
             await getRepository().addAreaOption(v);
-            setReloadKey((k) => k + 1);
+            reload();
           }}
           onRemove={async (v) => {
             await getRepository().removeAreaOption(v);
-            setReloadKey((k) => k + 1);
+            reload();
           }}
         />
 

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Shuffle, MessageCircle } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { useAsync } from "@/lib/useAsync";
+import { queryKeys, useRepoQuery } from "@/lib/query";
 import { getRepository } from "@/lib/data";
 import { buildCommunityFeed } from "@/lib/student/community";
 import { Label } from "@/components/ui/Label";
@@ -28,9 +28,11 @@ function pickRandomIndices(length: number, count: number): number[] {
 
 export function CommunityVoicesCard() {
   const { user } = useAuth();
-  const { data: feed } = useAsync(
-    () => (user ? buildCommunityFeed(getRepository(), user.id) : Promise.resolve(null)),
-    [user?.id],
+  const userId = user?.id ?? "";
+  const { data: feed } = useRepoQuery(
+    queryKeys.communityFeed(userId),
+    () => buildCommunityFeed(getRepository(), userId),
+    { enabled: !!user },
   );
   const [selected, setSelected] = useState<number[]>([]);
 

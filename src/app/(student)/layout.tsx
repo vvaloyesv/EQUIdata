@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Calendar,
   FolderKanban,
@@ -15,24 +15,28 @@ import {
 import { SidebarNav, type NavItem } from "@/components/ui/SidebarNav";
 import { BrandLoader } from "@/components/ui/BrandLoader";
 import { ProfileCompletionModal } from "@/components/student/ProfileCompletionModal";
-import { useAsync } from "@/lib/useAsync";
+import { queryKeys, useRefresh, useRepoQuery } from "@/lib/query";
 import { getRepository } from "@/lib/data";
 import { getStreakDays } from "@/lib/student/dashboard";
 import { getUnreadMessageCount } from "@/lib/student/messages";
 import { isProfileIncomplete } from "@/lib/student/profileCompletion";
 import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useAuth } from "@/context/AuthContext";
-import { isSupabaseMode } from "@/lib/data/dataSource";
 import { createClient } from "@/lib/supabase/client";
 import { compressImage } from "@/lib/student/imageCompression";
+import { features } from "@/lib/features";
 
 const BASE_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutGrid },
   { href: "/courses", label: "Mis cursos", icon: BookOpen },
   { href: "/calendar", label: "Calendario", icon: Calendar },
-  { href: "/projects", label: "Proyectos", icon: FolderKanban },
+  // Fachada: oculta en el piloto salvo NEXT_PUBLIC_SHOW_PROJECTS=true (src/lib/features.ts).
+  ...(features.projects
+    ? [{ href: "/projects", label: "Proyectos", icon: FolderKanban }]
+    : []),
   { href: "/community", label: "Comunidad", icon: Users },
-  { href: "/messages", label: "Mensajes", icon: MessageSquare },
+  // Oculto en el piloto salvo NEXT_PUBLIC_SHOW_MESSAGES=true (src/lib/features.ts).
+  ...(features.messages ? [{ href: "/messages", label: "Mensajes", icon: MessageSquare }] : []),
   { href: "/challenges", label: "Retos", icon: Target, groupStart: true },
   { href: "/tutorials", label: "Tutoriales", icon: PlayCircle },
   { href: "/certifications", label: "Certificaciones", icon: Award, groupStart: true },
@@ -45,38 +49,25 @@ export default function StudentLayout({
 }) {
   const { user, loading } = useRequireAuth("student");
   const { refreshUser } = useAuth();
-  const [messageBadgeKey, setMessageBadgeKey] = useState(0);
+  const refresh = useRefresh();
   const [avatarUploading, setAvatarUploading] = useState(false);
-  const [profileReloadKey, setProfileReloadKey] = useState(0);
-  const { data: profile, loading: profileLoading } = useAsync(
-    () =>
-      user
-        ? getRepository().getStudentProfile(user.id)
-        : Promise.resolve(null),
-    [user?.id, profileReloadKey],
+  const userId = user?.id ?? "";
+  // Perfil y no leídos comparten clave con el dashboard y Mensajes: una sola lectura.
+  const { data: profile, loading: profileLoading } = useRepoQuery(
+    queryKeys.studentProfile(userId),
+    () => getRepository().getStudentProfile(userId),
+    { enabled: !!user },
   );
-  const { data: streakDays } = useAsync(
-    () =>
-      user
-        ? getStreakDays(getRepository(), user.id, new Date().toISOString())
-        : Promise.resolve(0),
-    [user?.id],
+  const { data: streakDays } = useRepoQuery(
+    queryKeys.streak(userId),
+    () => getStreakDays(getRepository(), userId, new Date().toISOString()),
+    { enabled: !!user },
   );
-  const { data: unreadCount } = useAsync(
-    () =>
-      user ? getUnreadMessageCount(getRepository(), user.id) : Promise.resolve(0),
-    [user?.id, messageBadgeKey],
+  const { data: unreadCount } = useRepoQuery(
+    queryKeys.unread(userId),
+    () => getUnreadMessageCount(getRepository(), userId),
+    { enabled: !!user && features.messages },
   );
-
-  useEffect(() => {
-    function refreshMessageBadge() {
-      setMessageBadgeKey((k) => k + 1);
-    }
-
-    window.addEventListener("equidata:messages-read", refreshMessageBadge);
-    return () =>
-      window.removeEventListener("equidata:messages-read", refreshMessageBadge);
-  }, []);
 
   const subtitle = profile ? profile.cargo : "Estudiante";
   const profileName = profile
@@ -97,26 +88,16 @@ export default function StudentLayout({
     try {
       const compressed = await compressImage(file);
 
-      let url: string;
-      if (isSupabaseMode()) {
-        const supabase = createClient();
-        const path = `${user.id}/avatar.jpg`;
-        const { error } = await supabase.storage
-          .from("avatars")
-          .upload(path, compressed, { upsert: true, contentType: "image/jpeg" });
-        if (error) throw error;
-        // Cache-bust: el nombre de archivo no cambia entre subidas, así que
-        // sin esto el navegador podría seguir mostrando la foto vieja.
-        const { data } = supabase.storage.from("avatars").getPublicUrl(path);
-        url = `${data.publicUrl}?v=${Date.now()}`;
-      } else {
-        url = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result as string);
-          reader.onerror = reject;
-          reader.readAsDataURL(compressed);
-        });
-      }
+      const supabase = createClient();
+      const path = `${user.id}/avatar.jpg`;
+      const { error } = await supabase.storage
+        .from("avatars")
+        .upload(path, compressed, { upsert: true, contentType: "image/jpeg" });
+      if (error) throw error;
+      // Cache-bust: el nombre de archivo no cambia entre subidas, así que
+      // sin esto el navegador podría seguir mostrando la foto vieja.
+      const { data } = supabase.storage.from("avatars").getPublicUrl(path);
+      const url = `${data.publicUrl}?v=${Date.now()}`;
 
       await getRepository().updateAvatarUrl(user.id, url);
       await refreshUser();
@@ -147,7 +128,7 @@ export default function StudentLayout({
         <ProfileCompletionModal
           userId={user.id}
           profile={profile ?? null}
-          onComplete={() => setProfileReloadKey((k) => k + 1)}
+          onComplete={() => void refresh()}
         />
       )}
     </div>

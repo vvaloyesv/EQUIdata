@@ -3,12 +3,12 @@
 import { useState } from "react";
 import { Heart, MessageCircle, PenLine, SendHorizontal, Sparkles } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { useAsync } from "@/lib/useAsync";
+import { queryKeys, useRefresh, useRepoQuery } from "@/lib/query";
 import { getRepository } from "@/lib/data";
 import {
   buildCommunityFeed,
+  buildReplyThread,
   pickPostColor,
-  resolveCommunityDisplayName,
   type CommunityPostVM,
 } from "@/lib/student/community";
 import { Modal } from "@/components/ui/Modal";
@@ -76,15 +76,18 @@ const TOPICS: Array<{
  */
 export function CommunityFeed() {
   const { user } = useAuth();
-  const [reloadKey, setReloadKey] = useState(0);
+  const refresh = useRefresh();
   const [draft, setDraft] = useState("");
   const [category, setCategory] = useState<CommunityCategory | null>(null);
   const [posting, setPosting] = useState(false);
   const [openPostId, setOpenPostId] = useState<string | null>(null);
+  const userId = user?.id ?? "";
 
-  const { data: feed, loading } = useAsync(
-    () => (user ? buildCommunityFeed(getRepository(), user.id) : Promise.resolve(null)),
-    [user?.id, reloadKey],
+  // Misma lectura que "Voces de la comunidad" del dashboard.
+  const { data: feed, loading } = useRepoQuery(
+    queryKeys.communityFeed(userId),
+    () => buildCommunityFeed(getRepository(), userId),
+    { enabled: !!user },
   );
 
   async function publish() {
@@ -99,14 +102,14 @@ export function CommunityFeed() {
     });
     setDraft("");
     setCategory(null);
+    await refresh();
     setPosting(false);
-    setReloadKey((k) => k + 1);
   }
 
   async function toggleLike(postId: string) {
     if (!user) return;
     await getRepository().toggleCommunityLike(postId, user.id);
-    setReloadKey((k) => k + 1);
+    await refresh();
   }
 
   if (loading || !feed) {
@@ -253,7 +256,7 @@ export function CommunityFeed() {
         {openPost && (
           <PostThread
             item={openPost}
-            onReplySent={() => setReloadKey((k) => k + 1)}
+            onReplySent={() => void refresh()}
           />
         )}
       </Modal>
@@ -269,20 +272,12 @@ function PostThread({
   onReplySent: () => void;
 }) {
   const { user } = useAuth();
-  const [localReload, setLocalReload] = useState(0);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
 
-  const { data: replies } = useAsync(async () => {
-    const repo = getRepository();
-    const list = await repo.listCommunityReplies(item.post.id);
-    return Promise.all(
-      list.map(async (reply) => ({
-        reply,
-        authorName: await resolveCommunityDisplayName(repo, reply.authorId),
-      })),
-    );
-  }, [item.post.id, localReload]);
+  const { data: replies } = useRepoQuery(["community-replies", item.post.id], () =>
+    buildReplyThread(getRepository(), item.post.id),
+  );
 
   async function send() {
     if (!user || !draft.trim()) return;
@@ -296,7 +291,7 @@ function PostThread({
     });
     setDraft("");
     setSending(false);
-    setLocalReload((k) => k + 1);
+    // El refresco del padre también vuelve a pedir este hilo (misma caché).
     onReplySent();
   }
 

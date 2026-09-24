@@ -19,7 +19,7 @@ import { useState } from "react";
 import { ArrowLeft, ArrowRight, Briefcase, CreditCard, LayoutGrid, User } from "lucide-react";
 import { Input, Select } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
-import { useAsync } from "@/lib/useAsync";
+import { queryKeys, useRepoQuery } from "@/lib/query";
 import { getRepository } from "@/lib/data";
 import { CARGO_OPTIONS } from "@/lib/brand/lists";
 import { DOCUMENT_TYPE_OPTIONS, isPendingDocumentNumber, validateDocumentNumber } from "@/lib/brand/documentTypes";
@@ -57,8 +57,12 @@ export function ProfileCompletionModal({
   profile: StudentProfile | null;
   onComplete: () => void;
 }) {
-  const { data: areaOptions } = useAsync(() => getRepository().listAreaOptions(), []);
-  const { data: customFieldDefs } = useAsync(() => getRepository().listOnboardingFields(), []);
+  const { data: areaOptions } = useRepoQuery(queryKeys.areaOptions(), () =>
+    getRepository().listAreaOptions(),
+  );
+  const { data: customFieldDefs } = useRepoQuery(queryKeys.onboardingFields(), () =>
+    getRepository().listOnboardingFields(),
+  );
 
   const [stepIndex, setStepIndex] = useState(0);
   const [saving, setSaving] = useState(false);

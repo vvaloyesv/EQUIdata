@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useAsync } from "@/lib/useAsync";
+import { queryKeys, useRepoQuery } from "@/lib/query";
 import { getRepository } from "@/lib/data";
-import { getCourseCompletion } from "@/lib/student/course";
+import { buildCourseProgressRows } from "@/lib/teacher/progress";
 import { Card } from "@/components/ui/Card";
 import { Label } from "@/components/ui/Label";
 import { Badge } from "@/components/ui/Badge";
@@ -12,24 +12,16 @@ import { Avatar } from "@/components/ui/Avatar";
 import { EmptyState } from "@/components/ui/LockedState";
 
 export default function TeacherProgressPage() {
-  const { data: courses } = useAsync(() => getRepository().listCourses(), []);
+  const { data: courses } = useRepoQuery(queryKeys.courses(), () => getRepository().listCourses());
   const [courseId, setCourseId] = useState<string>();
 
   const activeCourseId = courseId ?? courses?.[0]?.id;
 
-  const { data: rows, loading } = useAsync(async () => {
-    if (!activeCourseId) return null;
-    const repo = getRepository();
-    const enrollments = await repo.listEnrollmentsByCourse(activeCourseId);
-    const out = [];
-    for (const e of enrollments) {
-      const student = await repo.getUserById(e.userId);
-      const { total, completed } = await getCourseCompletion(repo, e.userId, activeCourseId);
-      const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
-      out.push({ student, percent, completed, total });
-    }
-    return out.sort((a, b) => b.percent - a.percent);
-  }, [activeCourseId]);
+  const { data: rows, loading } = useRepoQuery(
+    ["course-progress-rows", activeCourseId ?? ""],
+    () => buildCourseProgressRows(getRepository(), activeCourseId!),
+    { enabled: !!activeCourseId },
+  );
 
   if (!courses) {
     return (

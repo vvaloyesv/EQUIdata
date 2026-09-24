@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
-import { useAsync } from "@/lib/useAsync";
+import { useRepoQuery } from "@/lib/query";
 import { getRepository } from "@/lib/data";
 import { syncAndListCertificates } from "@/lib/student/certificate";
 import { CertificateView } from "@/components/student/CertificateView";
@@ -14,12 +14,11 @@ const CARD_WIDTH = 340;
 
 export default function CertificationsPage() {
   const { user } = useAuth();
-  const { data: certificates, loading } = useAsync(
-    () =>
-      user
-        ? syncAndListCertificates(getRepository(), user.id, new Date().toISOString())
-        : Promise.resolve(null),
-    [user?.id],
+  const userId = user?.id ?? "";
+  const { data: certificates, loading } = useRepoQuery(
+    ["certificates", userId],
+    () => syncAndListCertificates(getRepository(), userId, new Date().toISOString()),
+    { enabled: !!user },
   );
 
   if (loading || !certificates) {

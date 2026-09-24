@@ -3,22 +3,18 @@
 import { useState } from "react";
 import Link from "next/link";
 import {
-  Bell,
   ChevronDown,
   ClipboardCheck,
   Download,
   FilePlus2,
-  Gauge,
   GraduationCap,
-  HelpCircle,
-  Lock,
   LogOut,
   Settings,
   TrendingUp,
   Users,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { useAsync } from "@/lib/useAsync";
+import { queryKeys, useRepoQuery } from "@/lib/query";
 import { getRepository } from "@/lib/data";
 import { buildTeacherDashboard } from "@/lib/teacher/dashboard";
 import { Card } from "@/components/ui/Card";
@@ -34,7 +30,7 @@ const ALL_COURSES = "__all__";
 
 export default function TeacherDashboardPage() {
   const { user, logout } = useAuth();
-  const { data: courses } = useAsync(() => getRepository().listCourses(), []);
+  const { data: courses } = useRepoQuery(queryKeys.courses(), () => getRepository().listCourses());
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   // null = todavía no elegiste nada → usa el primer curso por defecto (no
   // "todos"), para no comparar peras con manzanas apenas se abre la pantalla.
@@ -42,10 +38,11 @@ export default function TeacherDashboardPage() {
   const activeCourseId =
     courseFilter === ALL_COURSES ? undefined : (courseFilter ?? courses?.[0]?.id);
 
-  const { data: vm, loading } = useAsync(async () => {
-    if (!courses) return null;
-    return buildTeacherDashboard(getRepository(), activeCourseId);
-  }, [courses, activeCourseId]);
+  const { data: vm, loading } = useRepoQuery(
+    ["teacher-dashboard", activeCourseId ?? ALL_COURSES],
+    () => buildTeacherDashboard(getRepository(), activeCourseId),
+    { enabled: !!courses },
+  );
 
   if (loading || !vm || !courses) {
     return <BrandLoader label="Preparando el panel..." />;
@@ -57,11 +54,9 @@ export default function TeacherDashboardPage() {
     distribution.inProgress +
     distribution.atRisk +
     distribution.notStarted;
+  // Solo lo que funciona: "Mi actividad", "Privacidad" y "Soporte" no tenían pantalla.
   const profileMenuItems = [
-    { label: "Mi actividad", icon: Gauge },
-    { label: "Configuración de la cuenta", icon: Settings },
-    { label: "Configuración de privacidad", icon: Lock },
-    { label: "Soporte", icon: HelpCircle },
+    { label: "Configuración de la cuenta", icon: Settings, href: "/teacher/settings" },
   ];
 
   function handleLogout() {
@@ -96,11 +91,6 @@ export default function TeacherDashboardPage() {
           </div>
 
           <div className="relative flex items-center gap-3">
-            <button className="relative flex h-10 w-10 items-center justify-center rounded-full text-[var(--color-muted)] transition-colors hover:bg-white hover:text-[var(--color-navy)]">
-              <Bell size={18} />
-              <span className="absolute right-2.5 top-2 h-2 w-2 rounded-full bg-[var(--color-coral)]" />
-            </button>
-
             <button
               type="button"
               onClick={() => setProfileMenuOpen((v) => !v)}
@@ -119,14 +109,15 @@ export default function TeacherDashboardPage() {
                   {profileMenuItems.map((item) => {
                     const Icon = item.icon;
                     return (
-                      <button
+                      <Link
                         key={item.label}
-                        type="button"
+                        href={item.href}
+                        onClick={() => setProfileMenuOpen(false)}
                         className="flex w-full items-center gap-3 rounded-[var(--radius-token)] px-3 py-2.5 text-sm font-medium transition-colors hover:bg-[var(--color-navy-tint)]"
                       >
                         <Icon size={18} />
                         {item.label}
-                      </button>
+                      </Link>
                     );
                   })}
                 </div>
