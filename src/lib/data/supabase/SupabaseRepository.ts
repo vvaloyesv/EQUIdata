@@ -1658,6 +1658,43 @@ export class SupabaseRepository implements Repository {
     await this.saveOutcomeScores(outcomeScores);
   }
 
+  async startAttempt(attempt: Attempt) {
+    const parsed = AttemptSchema.parse({ ...attempt, status: "in_progress" });
+    const { error } = await this.supabase.from("attempts").insert(fromAttempt(parsed));
+    if (error) throw new Error(error.message);
+  }
+
+  async saveAttemptAnswer(answer: Answer) {
+    const row = fromAnswer(AnswerSchema.parse(answer));
+    const { error } = await this.supabase.from("answers").upsert(row, { onConflict: "id" });
+    if (error) throw new Error(error.message);
+  }
+
+  async finishAttempt(attempt: Attempt, gradedAnswers: Answer[], outcomeScores: OutcomeScore[]) {
+    const parsed = AttemptSchema.parse({ ...attempt, status: "submitted" });
+    const answerRows = gradedAnswers.map((a) => fromAnswer(AnswerSchema.parse(a)));
+    const scoreRows = outcomeScores.map((s) => fromOutcomeScore(OutcomeScoreSchema.parse(s)));
+
+    // Primero respuestas y RA, al final el intento: si algo falla en medio,
+    // el intento sigue abierto y se vuelve a cerrar la próxima vez (upserts
+    // idempotentes), en vez de quedar "enviado" con datos a medias.
+    if (answerRows.length) {
+      const { error } = await this.supabase.from("answers").upsert(answerRows, { onConflict: "id" });
+      if (error) throw new Error(error.message);
+    }
+    if (scoreRows.length) {
+      const { error } = await this.supabase
+        .from("outcome_scores")
+        .upsert(scoreRows, { onConflict: "attempt_id,outcome_id" });
+      if (error) throw new Error(error.message);
+    }
+    const { error } = await this.supabase
+      .from("attempts")
+      .update({ status: "submitted", score: parsed.score ?? null, submitted_at: parsed.submittedAt ?? null })
+      .eq("id", parsed.id);
+    if (error) throw new Error(error.message);
+  }
+
   async sendMessages(messages: Message[]) {
     if (messages.length === 0) return;
     const rows = messages.map((m) => fromMessage(MessageSchema.parse(m)));

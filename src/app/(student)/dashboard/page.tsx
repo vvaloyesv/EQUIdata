@@ -62,6 +62,7 @@ export default function DashboardPage() {
     resume,
     courses,
     reviewModules,
+    reviewCourseId,
     events,
     streakDays,
     currentMood,
@@ -276,9 +277,10 @@ export default function DashboardPage() {
             )}
 
             {reviewModules.slice(0, 3).map((m) => (
-              <div
+              <Link
                 key={m.id}
-                className="flex items-center justify-between gap-3"
+                href={`/courses/${reviewCourseId}?module=${encodeURIComponent(m.id)}`}
+                className="group flex items-center justify-between gap-3 rounded-[var(--radius-token)]"
               >
                 <div className="min-w-0">
                   <Label>
@@ -286,15 +288,18 @@ export default function DashboardPage() {
                     {m.durationMin ?? 10} min
                   </Label>
 
-                  <p className="truncate text-sm text-[var(--color-navy)]">
+                  <p className="truncate text-sm text-[var(--color-navy)] group-hover:underline">
                     {m.title}
                   </p>
                 </div>
 
-                <button className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--color-navy-tint)] text-[var(--color-navy)] hover:bg-[var(--color-lavender-tint)]">
+                <span
+                  aria-hidden
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--color-navy-tint)] text-[var(--color-navy)] group-hover:bg-[var(--color-lavender-tint)]"
+                >
                   <Play size={15} />
-                </button>
-              </div>
+                </span>
+              </Link>
             ))}
           </div>
         </Card>

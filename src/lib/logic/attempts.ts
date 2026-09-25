@@ -26,6 +26,11 @@ export interface AttemptGate {
   bestScore?: number;
   /** ¿Ya aprobó (bestScore ≥ passingScore)? */
   passed: boolean;
+  /**
+   * Tope efectivo de intentos (maxAttempts + reabiertos por el profesor).
+   * Undefined en el diagnóstico final, que va por tandas sin tope total.
+   */
+  attemptCap?: number;
 }
 
 function submitted(attempts: Attempt[]): Attempt[] {
@@ -51,7 +56,14 @@ export interface GateContext {
 export function attemptGate(ctx: GateContext): AttemptGate {
   const { evaluation, attempts, nowIso, bonusAttempts = 0 } = ctx;
   const done = submitted(attempts);
-  const used = done.length;
+  // Quiz cronometrado: un intento que se empezó y no se terminó (la persona
+  // se salió o recargó) también cuenta como usado — si no, bastaría con
+  // recargar para ver las preguntas y volver a empezar con el reloj en cero.
+  const openTimed =
+    evaluation.kind === "quiz" || evaluation.kind === "tutorial_quiz"
+      ? attempts.filter((a) => a.status === "in_progress").length
+      : 0;
+  const used = done.length + openTimed;
   const best = bestScore(attempts);
   const passing = evaluation.passingScore ?? Infinity;
   const passed = best !== undefined && best >= passing;
@@ -61,6 +73,8 @@ export function attemptGate(ctx: GateContext): AttemptGate {
     usedAttempts: used,
     bestScore: best,
     passed,
+    attemptCap:
+      evaluation.kind === "diagnostic_final" ? undefined : evaluation.maxAttempts + bonusAttempts,
   };
 
   // Ya aprobó → no necesita más intentos.

@@ -1,32 +1,28 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { use, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { useRefresh, useRepoQuery } from "@/lib/query";
 import { getRepository } from "@/lib/data";
-import { buildEvaluationView, canSubmitAttempt } from "@/lib/student/evaluation";
-import { gradeAttempt } from "@/lib/logic/grading";
-import type { Answer, OutcomeScore } from "@/lib/domain/types";
-import type { DraftAnswer } from "@/components/student/QuestionField";
-import { QuestionField, isQuestionAnswered } from "@/components/student/QuestionField";
+import { buildEvaluationView } from "@/lib/student/evaluation";
 import { ResultsView } from "@/components/student/ResultsView";
 import { FocusTopBar } from "@/components/student/FocusTopBar";
+import {
+  TimedQuiz,
+  useFinalizeAbandonedAttempts,
+  type TimedQuizResult,
+} from "@/components/student/TimedQuiz";
 import { Card } from "@/components/ui/Card";
 import { Label } from "@/components/ui/Label";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 
-interface SubmitResult {
-  score: number;
-  outcomeScores: OutcomeScore[];
-}
-
 /**
  * Quiz de tutorial (spec M9): mismo motor de Evaluation/Question que los
- * quizzes de curso, pero recortado — sin certificado, sin línea base
- * pre/post, sin ramas de diagnóstico final/onboarding de intereses (no
- * aplican a un tutorial suelto).
+ * quizzes de curso, recortado — sin certificado, sin línea base pre/post,
+ * sin resultados por RA. Desde el 24/09/2026 se rinde cronometrado (una
+ * pregunta a la vez, 45 s cada una), igual que los quizzes de sesión.
  */
 export default function TutorialEvalPage({
   params,
@@ -35,25 +31,23 @@ export default function TutorialEvalPage({
 }) {
   const { id: tutorialId, evalId } = use(params);
   const { user } = useAuth();
-  const refresh = useRefresh();
+  const invalidate = useRefresh();
+  const refresh = useCallback(() => void invalidate(), [invalidate]);
   const userId = user?.id ?? "";
-  const [answers, setAnswers] = useState<Record<string, DraftAnswer>>({});
-  const [result, setResult] = useState<SubmitResult | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [unansweredIds, setUnansweredIds] = useState<Set<string>>(new Set());
-  const [started, setStarted] = useState(false);
+  const [running, setRunning] = useState(false);
+  const [result, setResult] = useState<TimedQuizResult | null>(null);
+  const [run, setRun] = useState(0);
 
   const { data: vm, loading } = useRepoQuery(
     ["evaluation-view", userId, evalId],
     () => buildEvaluationView(getRepository(), userId, evalId, new Date().toISOString()),
     { enabled: !!user },
   );
+  const { closedAbandoned } = useFinalizeAbandonedAttempts(vm, { paused: running, onDone: refresh });
 
   useEffect(() => {
-    setAnswers({});
     setResult(null);
-    setStarted(false);
-    setUnansweredIds(new Set());
+    setRun((k) => k + 1);
   }, [evalId]);
 
   if (loading || !vm) {
@@ -64,92 +58,9 @@ export default function TutorialEvalPage({
     );
   }
 
-  const { evaluation, questions, optionsByQuestion, gate } = vm;
-
-  async function submit() {
-    if (!user) return;
-
-    const missing = questions.filter(
-      (q) => !isQuestionAnswered(q, optionsByQuestion[q.id] ?? [], answers[q.id] ?? {}),
-    );
-    if (missing.length > 0) {
-      setUnansweredIds(new Set(missing.map((q) => q.id)));
-      return;
-    }
-    setUnansweredIds(new Set());
-
-    setSubmitting(true);
-    const repo = getRepository();
-
-    // Revalida el gate justo antes de escribir: la UI ya oculta el
-    // formulario cuando no se puede intentar, pero esta es la barrera real —
-    // protege contra un envío disparado desde una pestaña vieja o DevTools.
-    const stillAllowed = await canSubmitAttempt(
-      repo,
-      user.id,
-      evaluation.id,
-      new Date().toISOString(),
-    );
-    if (!stillAllowed) {
-      setSubmitting(false);
-      await refresh();
-      return;
-    }
-
-    const attemptId = `att-${evaluation.id}-${crypto.randomUUID()}`;
-
-    const rawAnswers: Answer[] = questions.map((q) => {
-      const d = answers[q.id] ?? {};
-      return {
-        id: `${attemptId}-${q.id}`,
-        attemptId,
-        questionId: q.id,
-        selectedOptionIds: d.selectedOptionIds,
-        openText: d.openText,
-        scaleValue: d.scaleValue,
-        rankingOrder: d.rankingOrder,
-      };
-    });
-
-    const graded = gradeAttempt({
-      attemptId,
-      questions,
-      optionsByQuestion,
-      outcomes: [],
-      answers: rawAnswers,
-    });
-
-    const nowIso = new Date().toISOString();
-    // Intento + respuestas, todo o nada (el quiz de tutorial no tiene RA).
-    await repo.submitAttempt(
-      {
-        id: attemptId,
-        userId: user.id,
-        evaluationId: evaluation.id,
-        startedAt: nowIso,
-        submittedAt: nowIso,
-        score: graded.score,
-        status: "submitted",
-      },
-      graded.gradedAnswers,
-      [],
-    );
-
-    setResult({ score: graded.score, outcomeScores: graded.outcomeScores });
-    setSubmitting(false);
-    await refresh();
-  }
-
+  const { evaluation, gate } = vm;
   const passed =
-    evaluation.passingScore !== undefined &&
-    (result?.score ?? 0) >= evaluation.passingScore;
-
-  function retry() {
-    setResult(null);
-    setAnswers({});
-    setUnansweredIds(new Set());
-    setStarted(true);
-  }
+    !!result && evaluation.passingScore !== undefined && result.score >= evaluation.passingScore;
 
   return (
     <div>
@@ -163,9 +74,14 @@ export default function TutorialEvalPage({
         <Badge tone="lavender" className="mb-2">
           Quiz
         </Badge>
-        <h1 className="font-display text-3xl text-[var(--color-navy)]">
-          {evaluation.title}
-        </h1>
+        <h1 className="font-display text-3xl text-[var(--color-navy)]">{evaluation.title}</h1>
+
+        {closedAbandoned && !running && (
+          <Card bordered className="mt-6 border-[var(--color-lavender)] text-sm text-[var(--color-navy)]">
+            Tu intento anterior quedó sin terminar y se registró con las respuestas que
+            alcanzaste a dar. Si necesitas otro intento, pídeselo a tu profesora.
+          </Card>
+        )}
 
         <div className="mt-6">
           {result ? (
@@ -177,16 +93,18 @@ export default function TutorialEvalPage({
                 outcomes={[]}
                 passed={passed}
                 extraMessage={
-                  passed
-                    ? "¡Buen trabajo!"
-                    : "Puedes revisar el tutorial y volver a intentarlo."
+                  passed ? "¡Buen trabajo!" : "Puedes revisar el tutorial y volver a intentarlo."
                 }
               />
               <div className="flex gap-3">
                 {!gate.passed && gate.canAttempt && (
-                  <Button onClick={retry}>
-                    Hacer el intento {gate.usedAttempts + 1} de{" "}
-                    {evaluation.maxAttempts}
+                  <Button
+                    onClick={() => {
+                      setResult(null);
+                      setRun((k) => k + 1);
+                    }}
+                  >
+                    Hacer el intento {gate.usedAttempts + 1} de {gate.attemptCap ?? evaluation.maxAttempts}
                   </Button>
                 )}
                 <Link href={`/tutorials/${tutorialId}`}>
@@ -194,6 +112,17 @@ export default function TutorialEvalPage({
                 </Link>
               </div>
             </div>
+          ) : running || (!gate.passed && gate.canAttempt) ? (
+            <TimedQuiz
+              key={run}
+              vm={vm}
+              userId={userId}
+              onRunningChange={setRunning}
+              onFinished={(r) => {
+                setResult(r);
+                refresh();
+              }}
+            />
           ) : gate.passed ? (
             <Card bordered>
               <Label>Ya completado</Label>
@@ -201,7 +130,7 @@ export default function TutorialEvalPage({
                 Ya aprobaste este quiz con {gate.bestScore}%.
               </p>
             </Card>
-          ) : !gate.canAttempt ? (
+          ) : (
             <Card bordered>
               <Label>Sin intentos disponibles</Label>
               <p className="mt-2 text-[var(--color-navy)]">{gate.reasonLabel}</p>
@@ -211,66 +140,6 @@ export default function TutorialEvalPage({
                 </p>
               )}
             </Card>
-          ) : !started ? (
-            <Card bordered>
-              <Label>Antes de empezar</Label>
-              <p className="mt-2 text-[var(--color-navy)]">
-                Este quiz tiene <strong>{questions.length}</strong>{" "}
-                {questions.length === 1 ? "pregunta" : "preguntas"} y tienes{" "}
-                <strong>{evaluation.maxAttempts}</strong> intentos.
-              </p>
-              <p className="mt-1 text-sm text-[var(--color-muted)]">
-                {gate.usedAttempts > 0
-                  ? `Este sería el intento ${gate.usedAttempts + 1} de ${evaluation.maxAttempts}.`
-                  : "Todas las preguntas son obligatorias."}
-                {evaluation.passingScore !== undefined &&
-                  ` Aprueba con ${evaluation.passingScore}%.`}
-              </p>
-              <Button onClick={() => setStarted(true)} className="mt-4">
-                Empezar
-              </Button>
-            </Card>
-          ) : (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between text-sm text-[var(--color-muted)]">
-                <span>
-                  Intento {gate.usedAttempts + 1} de {evaluation.maxAttempts}
-                </span>
-                {evaluation.passingScore !== undefined && (
-                  <span>Aprueba con {evaluation.passingScore}%</span>
-                )}
-              </div>
-
-              {questions.map((q, i) => (
-                <QuestionField
-                  key={q.id}
-                  question={q}
-                  options={optionsByQuestion[q.id] ?? []}
-                  index={i}
-                  value={answers[q.id] ?? {}}
-                  onChange={(v) => {
-                    setAnswers((a) => ({ ...a, [q.id]: v }));
-                    setUnansweredIds((prev) => {
-                      if (!prev.has(q.id)) return prev;
-                      const next = new Set(prev);
-                      next.delete(q.id);
-                      return next;
-                    });
-                  }}
-                  error={unansweredIds.has(q.id)}
-                />
-              ))}
-
-              {unansweredIds.size > 0 && (
-                <p className="text-center text-sm text-[var(--color-coral)]">
-                  Responde todas las preguntas antes de enviar.
-                </p>
-              )}
-
-              <Button onClick={submit} disabled={submitting} className="w-full">
-                {submitting ? "Enviando…" : "Enviar respuestas"}
-              </Button>
-            </div>
           )}
         </div>
       </div>

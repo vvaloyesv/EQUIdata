@@ -30,7 +30,7 @@ export function EvalQuestionsForm({
     <div className="space-y-4">
       <div className="flex items-center justify-between text-sm text-[var(--color-muted)]">
         <span>
-          Intento {gate.usedAttempts + 1} de {evaluation.maxAttempts}
+          Intento {gate.usedAttempts + 1} de {gate.attemptCap ?? evaluation.maxAttempts}
           {evaluation.kind === "diagnostic_final" && " (por tanda)"}
         </span>
         {evaluation.passingScore !== undefined && (

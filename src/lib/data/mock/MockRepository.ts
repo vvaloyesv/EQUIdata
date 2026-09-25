@@ -737,6 +737,30 @@ export class MockRepository implements Repository {
     this.answers.push(...parsedAnswers);
     this.outcomeScores.push(...parsedScores);
   }
+  async startAttempt(attempt: Attempt) {
+    await this.createAttempt({ ...attempt, status: "in_progress" });
+  }
+  async saveAttemptAnswer(answer: Answer) {
+    const parsed = AnswerSchema.parse(answer);
+    if (!this.attempts.some((a) => a.id === parsed.attemptId)) {
+      fail(`Intento no encontrado: ${parsed.attemptId}`);
+    }
+    this.answers = [...this.answers.filter((a) => a.id !== parsed.id), parsed];
+  }
+  async finishAttempt(attempt: Attempt, gradedAnswers: Answer[], outcomeScores: OutcomeScore[]) {
+    const parsed = AttemptSchema.parse({ ...attempt, status: "submitted" });
+    const i = this.attempts.findIndex((a) => a.id === parsed.id);
+    if (i < 0) fail(`Intento no encontrado: ${parsed.id}`);
+    for (const a of gradedAnswers) await this.saveAttemptAnswer(a);
+    const scores = outcomeScores.map((s) => OutcomeScoreSchema.parse(s));
+    this.outcomeScores = [
+      ...this.outcomeScores.filter(
+        (s) => !scores.some((n) => n.attemptId === s.attemptId && n.outcomeId === s.outcomeId),
+      ),
+      ...scores,
+    ];
+    this.attempts[i] = parsed;
+  }
   async sendMessages(messages: Message[]) {
     for (const m of messages) await this.sendMessage(m);
   }

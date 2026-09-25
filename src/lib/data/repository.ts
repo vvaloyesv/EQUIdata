@@ -183,6 +183,18 @@ export interface Repository {
   listHiddenCommunityAuthorIds(): Promise<string[]>;
   /** Intento enviado, completo o nada: intento + respuestas + resultados por RA. */
   submitAttempt(attempt: Attempt, answers: Answer[], outcomeScores: OutcomeScore[]): Promise<void>;
+
+  // Quiz cronometrado (ver src/lib/logic/timedQuiz.ts) -----------------------
+  /** Registra el intento al comenzar (`status: "in_progress"`): desde ahí cuenta como usado. */
+  startAttempt(attempt: Attempt): Promise<void>;
+  /** Guarda (o reemplaza) la respuesta a una pregunta al pasar a la siguiente. */
+  saveAttemptAnswer(answer: Answer): Promise<void>;
+  /**
+   * Cierra un intento empezado con su nota, las respuestas calificadas y los
+   * resultados por RA. Idempotente: cerrarlo dos veces (al salir y al volver
+   * a entrar) deja el mismo resultado.
+   */
+  finishAttempt(attempt: Attempt, gradedAnswers: Answer[], outcomeScores: OutcomeScore[]): Promise<void>;
   /** Varios mensajes en una escritura (envío a todo un curso). */
   sendMessages(messages: Message[]): Promise<void>;
 }

@@ -1,6 +1,13 @@
 "use client";
 
-import { use } from "react";
+import { use, useCallback, useState } from "react";
+import { Card } from "@/components/ui/Card";
+import {
+  TimedQuiz,
+  useFinalizeAbandonedAttempts,
+  type TimedQuizResult,
+} from "@/components/student/TimedQuiz";
+import { isTimedEvaluation } from "@/lib/logic/timedQuiz";
 import { useAuth } from "@/context/AuthContext";
 import { useRefresh, useRepoQuery } from "@/lib/query";
 import { getRepository } from "@/lib/data";
@@ -21,8 +28,11 @@ export default function EvalPage({
   const { id: courseId, evalId } = use(params);
   const { user } = useAuth();
   const invalidate = useRefresh();
-  const refresh = () => void invalidate();
+  const refresh = useCallback(() => void invalidate(), [invalidate]);
   const userId = user?.id ?? "";
+  const [timedRunning, setTimedRunning] = useState(false);
+  const [timedResult, setTimedResult] = useState<TimedQuizResult | null>(null);
+  const [timedRun, setTimedRun] = useState(0);
 
   const { data: vm, loading } = useRepoQuery(
     ["evaluation-view", userId, evalId],
@@ -35,6 +45,11 @@ export default function EvalPage({
   );
 
   const submission = useEvalSubmission(vm, user, courseId, refresh);
+  const timed = vm ? isTimedEvaluation(vm.evaluation) : false;
+  const { closedAbandoned } = useFinalizeAbandonedAttempts(timed ? vm : null, {
+    paused: timedRunning,
+    onDone: refresh,
+  });
 
   if (loading || !vm) {
     return (
@@ -60,8 +75,55 @@ export default function EvalPage({
         </Badge>
         <h1 className="font-display text-3xl text-[var(--color-navy)]">{evaluation.title}</h1>
 
+        {closedAbandoned && !timedRunning && (
+          <Card bordered className="mt-6 border-[var(--color-lavender)] text-sm text-[var(--color-navy)]">
+            Tu intento anterior quedó sin terminar y se registró con las respuestas que
+            alcanzaste a dar. Si necesitas otro intento, pídeselo a tu profesora.
+          </Card>
+        )}
+
         <div className="mt-6">
-          {submission.result ? (
+          {timed ? (
+            timedResult ? (
+              <EvalResultPanel
+                evaluation={evaluation}
+                courseId={courseId}
+                isInterest={false}
+                archetypes={archetypes}
+                outcomes={outcomes}
+                result={timedResult}
+                gate={gate}
+                passed={
+                  evaluation.passingScore !== undefined &&
+                  timedResult.score >= evaluation.passingScore
+                }
+                onRetry={() => {
+                  setTimedResult(null);
+                  setTimedRun((k) => k + 1);
+                }}
+              />
+            ) : timedRunning || (modulesGate.ok && !gate.passed && gate.canAttempt) ? (
+              <TimedQuiz
+                key={timedRun}
+                vm={vm}
+                userId={userId}
+                onRunningChange={setTimedRunning}
+                onFinished={(result) => {
+                  setTimedResult(result);
+                  refresh();
+                }}
+              />
+            ) : (
+              <EvalGateNotice
+                courseId={courseId}
+                modulesGate={modulesGate}
+                gate={gate}
+                isInterest={false}
+                priorArchetypeResult={vm.priorArchetypeResult}
+                archetypes={archetypes}
+              />
+            )
+          ) : submission.result ? (
             <EvalResultPanel
               evaluation={evaluation}
               courseId={courseId}

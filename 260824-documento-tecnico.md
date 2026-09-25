@@ -40,7 +40,7 @@ El rol se asigna **una sola vez**, al crear la cuenta:
 | UC-02 | Completar onboarding | Primer ingreso, perfil incompleto | Llena nombres, apellidos, tipo/número de documento, cargo (lista fija) y área (lista fija editable por el profesor) + campos personalizados que el profesor haya definido. | Cuenta creada antes de exigir documento → placeholder `PENDIENTE-<userId>` hasta que lo complete. |
 | UC-03 | Autoinscribirse a un curso | Curso `published` y `enrollmentOpen = true` | Desde "Cursos disponibles", se inscribe con un clic. | Curso con inscripción cerrada → solo el profesor puede inscribir. |
 | UC-04 | Recorrer un curso | Inscrito, diagnóstico inicial resuelto | Ve sesiones como cards (completada/en progreso/bloqueada) → entra a una sesión abierta → ve módulos (video o HTML) → completa cada uno. | Sesión bloqueada → ve el motivo exacto (fecha o quiz previo) en vez de contenido. |
-| UC-05 | Rendir una evaluación (diagnóstico o quiz) | Módulos previos completos | Ve intro (preguntas, intentos disponibles) → responde → envía → ve nota + desglose por RA. | Sin intentos disponibles → bloqueado, con opción de esperar (diagnóstico final) o pedir reapertura al profesor. |
+| UC-05 | Rendir una evaluación (diagnóstico o quiz) | Módulos previos completos | Ve intro (preguntas, intentos disponibles) → responde → envía → ve nota + desglose por RA. En quizzes (de sesión y de tutorial): instrucciones → "¿Está seguro…?" Sí/No → una pregunta a la vez con 45 s cada una, sin volver atrás. | Sin intentos disponibles → bloqueado, con opción de esperar (diagnóstico final) o pedir reapertura al profesor. |
 | UC-06 | Ver comparación pre/post | Diagnóstico inicial y final ambos rendidos | Ve, por cada resultado de aprendizaje, dónde empezó vs. dónde quedó. | — |
 | UC-07 | Obtener certificado | Diagnóstico final aprobado (≥ passing) y curso 100% completo | Ve el certificado disponible → lo descarga (imagen PNG) → puede compartir el código de verificación. | Elegibilidad no cumplida → ve el motivo específico (curso incompleto vs. final no aprobado). |
 | UC-08 | Practicar en repaso | Completó al menos una sesión | Ve, en el dashboard, los módulos ya vistos de la sesión N y N-1 sugeridos como repaso. | — |
@@ -375,6 +375,8 @@ Si falta una condición, se devuelve el motivo específico (`date` | `prev_quiz`
 - **Diagnóstico final**: tandas de `maxAttempts` (default 2), separadas por `waitHours` (default 8) si la tanda se agota sin aprobar. **Sin tope total** — se repite hasta alcanzar `passingScore`.
 - `bestScore` = nota más alta entre los intentos enviados (se usa para reportes y para decidir aprobación).
 - Un quiz se considera "resuelto" (a efectos de desbloqueo) si está aprobado **o** si los intentos están agotados sin posibilidad de más en este momento.
+- **Quiz cronometrado** (`quiz` y `tutorial_quiz`, `timedQuiz.ts`): un intento `in_progress` (empezado y no terminado) **cuenta como usado**, para que recargar no dé un intento nuevo con el reloj en cero. En diagnósticos no cuenta, como antes. `attemptCap` expone el tope efectivo (`maxAttempts + bonusAttempts`) para las etiquetas "intento X de Y".
+- Flujo de escritura del quiz cronometrado: `startAttempt` (al confirmar Sí) → `saveAttemptAnswer` por pregunta (upsert) → `finishAttempt` (respuestas calificadas + RA + cierre del intento; idempotente). Un intento abandonado se cierra con las respuestas guardadas la próxima vez que la persona abre el quiz (`useFinalizeAbandonedAttempts`).
 
 ### 8.4 Repaso (`review.ts`)
 Sin modelo propio. Tras completar la sesión *N* (todos sus módulos), se sugieren como repaso los módulos ya existentes de las sesiones *N* y *N-1*. Se recalcula sobre la última sesión completa detectada, no se persiste.
@@ -435,7 +437,8 @@ Autenticación · onboarding (con campos configurables) · cursos → sesiones �
 | Pantallas lentas por consultas en bucle (M10) | Métodos en bloque del repositorio; `queryBudget.test.ts` falla si una pantalla vuelve a repetir consultas. |
 | Proyecto de Supabase pausado por inactividad (plan gratuito) | Workflow keep-alive cada 3 días (`.github/workflows/keep-alive.yml`). |
 | Código OTP rechazado reenviado en bucle hasta el rate limit (M10) | El envío automático ocurre una vez por código escrito. |
-| Intento de quiz guardado a medias por un corte de red | `submit_attempt` (0007): intento + respuestas + RA en una transacción. |
+| Intento de quiz guardado a medias por un corte de red | Diagnósticos: `submit_attempt` (0007), intento + respuestas + RA en una transacción. Quizzes cronometrados: cada respuesta se guarda al continuar y el cierre (`finishAttempt`) es idempotente; si falla, la pantalla ofrece reintentar con las respuestas en memoria. |
+| Estudiante recarga a mitad de un quiz cronometrado para reiniciar el reloj | El intento abierto cuenta como usado y se cierra con lo guardado al volver; la profesora puede reabrirlo. |
 
 ---
 

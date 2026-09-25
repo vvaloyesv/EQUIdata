@@ -2,7 +2,7 @@
 
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Award, Sparkles } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
@@ -29,6 +29,7 @@ export default function CoursePage({
 }) {
   const { id: courseId } = use(params);
   const router = useRouter();
+  const requestedModuleId = useSearchParams().get("module") ?? undefined;
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const refresh = useRefresh();
@@ -54,12 +55,24 @@ export default function CoursePage({
   }, [vm, selectedModuleId, queryClient]);
 
   // Selecciona la sesión y el módulo por defecto cuando cargan los datos.
+  // `?module=<id>` (p. ej. desde "En repaso" del dashboard) abre ese módulo
+  // si su sesión está abierta; si no, cae a la sesión por defecto.
   useEffect(() => {
     if (!vm) return;
     if (!selectedSessionId || !vm.sessions.some((s) => s.session.id === selectedSessionId)) {
-      setSelectedSessionId(vm.defaultSessionId);
+      const requested = requestedModuleId
+        ? vm.sessions.find(
+            (s) => s.status !== "locked" && s.modules.some((m) => m.id === requestedModuleId),
+          )
+        : undefined;
+      if (requested) {
+        setSelectedSessionId(requested.session.id);
+        setSelectedModuleId(requestedModuleId);
+      } else {
+        setSelectedSessionId(vm.defaultSessionId);
+      }
     }
-  }, [vm, selectedSessionId]);
+  }, [vm, selectedSessionId, requestedModuleId]);
 
   const activeSession = vm?.sessions.find(
     (s) => s.session.id === selectedSessionId,

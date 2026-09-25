@@ -214,6 +214,7 @@ exports[`view-models del estudiante > dashboard 1`] = `
     "percent": 60,
     "totalModules": 5,
   },
+  "reviewCourseId": "c-estadistica",
   "reviewModules": [
     {
       "context": "course",
@@ -307,6 +308,7 @@ exports[`view-models del estudiante > dashboard sin progreso 1`] = `
   ],
   "greetingName": "Otra",
   "resume": undefined,
+  "reviewCourseId": undefined,
   "reviewModules": [],
   "stats": {
     "average": 0,
@@ -332,6 +334,7 @@ exports[`view-models del estudiante > evaluación — diagnóstico final 1`] = `
     "waitHours": 8,
   },
   "gate": {
+    "attemptCap": undefined,
     "bestScore": undefined,
     "canAttempt": true,
     "passed": false,
@@ -405,6 +408,7 @@ exports[`view-models del estudiante > evaluación — diagnóstico final 1`] = `
       "name": "Interpretación de resultados",
     },
   ],
+  "pendingAttempts": [],
   "priorArchetypeResult": undefined,
   "questions": [
     {
@@ -452,6 +456,7 @@ exports[`view-models del estudiante > evaluación — diagnóstico inicial 1`] =
     "waitHours": 0,
   },
   "gate": {
+    "attemptCap": 1,
     "bestScore": 45,
     "canAttempt": false,
     "passed": false,
@@ -500,6 +505,7 @@ exports[`view-models del estudiante > evaluación — diagnóstico inicial 1`] =
       "name": "Interpretación de resultados",
     },
   ],
+  "pendingAttempts": [],
   "priorArchetypeResult": undefined,
   "questions": [
     {
@@ -541,6 +547,7 @@ exports[`view-models del estudiante > evaluación — quiz 1`] = `
     "waitHours": 0,
   },
   "gate": {
+    "attemptCap": 2,
     "bestScore": undefined,
     "canAttempt": true,
     "passed": false,
@@ -616,6 +623,7 @@ exports[`view-models del estudiante > evaluación — quiz 1`] = `
       "name": "Interpretación de resultados",
     },
   ],
+  "pendingAttempts": [],
   "priorArchetypeResult": undefined,
   "questions": [
     {
@@ -830,6 +838,7 @@ exports[`view-models del estudiante > vista de curso — estadística 1`] = `
         "waitHours": 0,
       },
       "quizGate": {
+        "attemptCap": 2,
         "bestScore": undefined,
         "canAttempt": true,
         "passed": false,
@@ -1047,6 +1056,7 @@ exports[`view-models del estudiante > vista de curso — otra estudiante 1`] = `
         "waitHours": 0,
       },
       "quizGate": {
+        "attemptCap": 2,
         "bestScore": undefined,
         "canAttempt": true,
         "passed": false,

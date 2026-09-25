@@ -7,12 +7,14 @@
 import type { Repository } from "@/lib/data/repository";
 import type {
   Archetype,
+  Attempt,
   Evaluation,
   LearningOutcome,
   Question,
   QuestionOption,
 } from "@/lib/domain/types";
 import { attemptGate, type AttemptGate } from "@/lib/logic/attempts";
+import { abandonedAttempts, isTimedEvaluation } from "@/lib/logic/timedQuiz";
 import { computeArchetypeResult, type ArchetypeResult } from "@/lib/logic/archetype";
 
 export interface EvaluationVM {
@@ -33,6 +35,12 @@ export interface EvaluationVM {
    * como el acceso directo por URL.
    */
   modulesGate: { ok: boolean; reasonLabel?: string };
+  /**
+   * Quiz cronometrado: intentos que se empezaron y no se terminaron (la
+   * persona se salió o recargó). La pantalla los cierra con las respuestas
+   * guardadas al volver a entrar.
+   */
+  pendingAttempts: Attempt[];
 }
 
 export async function buildEvaluationView(
@@ -98,6 +106,7 @@ export async function buildEvaluationView(
     gate,
     courseId: evaluation.courseId,
     modulesGate,
+    pendingAttempts: isTimedEvaluation(evaluation) ? abandonedAttempts(attempts) : [],
   };
 }
 

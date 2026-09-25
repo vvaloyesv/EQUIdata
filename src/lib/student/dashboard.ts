@@ -33,6 +33,8 @@ export interface DashboardVM {
   resume?: CourseProgress;
   courses: CourseProgress[];
   reviewModules: Module[];
+  /** Curso al que pertenecen los módulos de repaso (para enlazar a cada clase). */
+  reviewCourseId?: string;
   events: CalendarEvent[];
   /** Días consecutivos con actividad (módulos completados), real desde M5. */
   streakDays: number;
@@ -131,6 +133,7 @@ export async function buildDashboard(
     resume,
     courses,
     reviewModules: review,
+    reviewCourseId: review.length ? reviewStructure?.course.id : undefined,
     events,
     streakDays,
     currentMood: moodEntry?.mood ?? null,

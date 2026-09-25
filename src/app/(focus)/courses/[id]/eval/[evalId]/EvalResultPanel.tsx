@@ -75,7 +75,7 @@ export function EvalResultPanel({
       <div className="flex gap-3">
         {!gate.passed && gate.canAttempt && (
           <Button onClick={onRetry}>
-            Hacer el intento {gate.usedAttempts + 1} de {evaluation.maxAttempts}
+            Hacer el intento {gate.usedAttempts + 1} de {gate.attemptCap ?? evaluation.maxAttempts}
           </Button>
         )}
         <Link href={`/courses/${courseId}`}>
