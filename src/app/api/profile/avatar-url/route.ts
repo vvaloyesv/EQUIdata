@@ -15,6 +15,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { createRouteHandlerClient } from "@/lib/supabase/server";
+import { rateLimited } from "@/lib/server/rateLimit";
 
 export async function POST(request: Request) {
   const { avatarUrl } = await request.json().catch(() => ({ avatarUrl: null }));
@@ -29,6 +30,8 @@ export async function POST(request: Request) {
   if (!user) {
     return NextResponse.json({ error: "No autenticado" }, { status: 401 });
   }
+  const limited = await rateLimited("profile:update", user.id);
+  if (limited) return limited;
 
   // Solo fotos de nuestro bucket y de la carpeta de quien llama: no se acepta
   // una URL cualquiera (otro dominio, o la foto de otra persona).

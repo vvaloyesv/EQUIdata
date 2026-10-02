@@ -1,9 +1,3 @@
--- EQUIdata — Seguridad · SEC-01 (retos)
---
--- La estudiante ya no escribe en challenge_attempts: el resultado lo guarda
--- /api/challenges/attempt con la service role. Lectura: dueña o profesora.
--- module_progress queda como está a propósito: marcar un módulo como visto al
--- pasar por él es la regla de producto, sin verificación.
 
 drop policy if exists "challenge_attempts_own_or_teacher" on public.challenge_attempts;
 drop policy if exists "challenge_attempts_select_own_or_teacher" on public.challenge_attempts;

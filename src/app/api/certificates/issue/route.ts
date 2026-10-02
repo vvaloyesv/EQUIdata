@@ -9,10 +9,13 @@ import { NextResponse } from "next/server";
 import { getOrIssueCertificate } from "@/lib/student/certificate";
 import { fromCertificate } from "@/lib/data/supabase/SupabaseRepository";
 import { badRequest, errorResponse, readBody, sessionUserId, trustedRepository, unauthorized } from "@/lib/server/trusted";
+import { rateLimited } from "@/lib/server/rateLimit";
 
 export async function POST(request: Request) {
   const userId = await sessionUserId();
   if (!userId) return unauthorized();
+  const limited = await rateLimited("certificates:issue", userId);
+  if (limited) return limited;
   const { courseId } = await readBody(request);
   if (typeof courseId !== "string" || !courseId) return badRequest("Falta el curso.");
 

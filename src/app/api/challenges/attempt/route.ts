@@ -8,10 +8,13 @@ import { NextResponse } from "next/server";
 import { recordChallengeAttempt } from "@/lib/student/challenges";
 import { fromChallengeAttempt } from "@/lib/data/supabase/SupabaseRepository";
 import { errorResponse, readBody, sessionUserId, trustedRepository, unauthorized } from "@/lib/server/trusted";
+import { rateLimited } from "@/lib/server/rateLimit";
 
 export async function POST(request: Request) {
   const userId = await sessionUserId();
   if (!userId) return unauthorized();
+  const limited = await rateLimited("challenges:attempt", userId);
+  if (limited) return limited;
   const { challengeId, score, total } = await readBody(request);
 
   try {

@@ -21,6 +21,7 @@ import { createRouteHandlerClient } from "@/lib/supabase/server";
 import { resolveRole } from "@/lib/auth/role";
 import { SupabaseRepository } from "@/lib/data/supabase/SupabaseRepository";
 import { buildGradesView, gradesCsvFromView } from "@/lib/teacher/grades";
+import { rateLimited } from "@/lib/server/rateLimit";
 
 export async function GET(request: Request) {
   const params = new URL(request.url).searchParams;
@@ -36,6 +37,8 @@ export async function GET(request: Request) {
   if (!userId) {
     return NextResponse.json({ error: "Tu sesión terminó. Vuelve a ingresar." }, { status: 401 });
   }
+  const limited = await rateLimited("grades:export", userId);
+  if (limited) return limited;
   if ((await resolveRole(supabase, userId, data?.claims)) !== "teacher") {
     return NextResponse.json({ error: "Solo la profesora puede exportar calificaciones." }, { status: 403 });
   }

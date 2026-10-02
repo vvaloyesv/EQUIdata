@@ -17,6 +17,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { createRouteHandlerClient } from "@/lib/supabase/server";
+import { rateLimited } from "@/lib/server/rateLimit";
 
 export async function POST(request: Request) {
   const { displayName } = await request.json().catch(() => ({ displayName: null }));
@@ -31,6 +32,8 @@ export async function POST(request: Request) {
   if (!user) {
     return NextResponse.json({ error: "No autenticado" }, { status: 401 });
   }
+  const limited = await rateLimited("profile:update", user.id);
+  if (limited) return limited;
 
   const service = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

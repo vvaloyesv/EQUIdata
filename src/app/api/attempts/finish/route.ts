@@ -6,10 +6,13 @@
 
 import { NextResponse } from "next/server";
 import { badRequest, errorResponse, readBody, sessionUserId, trustedRepository, unauthorized } from "@/lib/server/trusted";
+import { rateLimited } from "@/lib/server/rateLimit";
 
 export async function POST(request: Request) {
   const userId = await sessionUserId();
   if (!userId) return unauthorized();
+  const limited = await rateLimited("attempts:finish", userId);
+  if (limited) return limited;
   const { attemptId } = await readBody(request);
   if (typeof attemptId !== "string" || !attemptId) return badRequest("Falta el intento.");
 

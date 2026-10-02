@@ -7,10 +7,13 @@
 import { NextResponse } from "next/server";
 import type { AnswerInput } from "@/lib/domain/types";
 import { badRequest, errorResponse, readBody, sessionUserId, trustedRepository, unauthorized } from "@/lib/server/trusted";
+import { rateLimited } from "@/lib/server/rateLimit";
 
 export async function POST(request: Request) {
   const userId = await sessionUserId();
   if (!userId) return unauthorized();
+  const limited = await rateLimited("attempts:submit", userId);
+  if (limited) return limited;
   const { evaluationId, answers } = await readBody(request);
   if (typeof evaluationId !== "string" || !evaluationId) return badRequest("Falta la evaluación.");
   if (!answers || typeof answers !== "object" || Array.isArray(answers)) {
