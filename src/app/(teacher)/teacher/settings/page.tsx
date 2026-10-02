@@ -14,6 +14,7 @@ import {
   OnboardingFieldForm,
   type OnboardingFieldSubmitData,
 } from "@/components/teacher/OnboardingFieldForm";
+import { PageBody, PageHeader } from "@/components/ui/Page";
 
 function OptionsCard({
   title,
@@ -107,17 +108,13 @@ export default function TeacherSettingsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-8 py-8">
-      <Label>Configuración</Label>
-      <h1 className="mt-2 font-display text-3xl text-[var(--color-navy)]">
-        Listas del onboarding
-      </h1>
-      <p className="mt-2 text-sm text-[var(--color-muted)]">
-        Estas opciones aparecen en el formulario de perfil que completan los
-        estudiantes al ingresar por primera vez. Agrega o quita lo que
-        necesites.
-      </p>
-
+    <div>
+      <PageHeader
+        eyebrow="Configuración · onboarding"
+        title="Listas del onboarding"
+        description="Opciones del formulario de perfil que completan las estudiantes al ingresar por primera vez."
+      />
+      <PageBody width="reading">
       <div className="mt-6 space-y-4">
         <OptionsCard
           title="Cargo"
@@ -191,6 +188,7 @@ export default function TeacherSettingsPage() {
           </div>
         </Card>
       </div>
+      </PageBody>
     </div>
   );
 }

@@ -7,10 +7,10 @@ import { getRepository } from "@/lib/data";
 import { Card } from "@/components/ui/Card";
 import { Label } from "@/components/ui/Label";
 import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
 import { ProgressBar } from "@/components/ui/Progress";
 import { EmptyState } from "@/components/ui/LockedState";
 import { buildTeacherCourseRows } from "@/lib/teacher/progress";
+import { PageBody, PageHeader, bandActionClass } from "@/components/ui/Page";
 
 export default function TeacherCoursesPage() {
   const { data: rows, loading } = useRepoQuery(["teacher-course-rows"], () =>
@@ -26,19 +26,17 @@ export default function TeacherCoursesPage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-8 py-8">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <Label>Contenido</Label>
-          <h1 className="mt-2 font-display text-3xl text-[var(--color-navy)]">
-            Cursos
-          </h1>
-        </div>
-        <Link href="/teacher/courses/new">
-          <Button>+ Crear curso</Button>
-        </Link>
-      </div>
-
+    <div>
+      <PageHeader
+        eyebrow={`${rows.length} ${rows.length === 1 ? "curso" : "cursos"} · ${rows.filter((r) => r.course.published).length} publicados`}
+        title="Cursos"
+        action={
+          <Link href="/teacher/courses/new" className={bandActionClass}>
+            + Crear curso
+          </Link>
+        }
+      />
+      <PageBody>
       <div className="mt-6 space-y-3">
         {rows.length === 0 ? (
           <EmptyState
@@ -75,6 +73,7 @@ export default function TeacherCoursesPage() {
           ))
         )}
       </div>
+      </PageBody>
     </div>
   );
 }

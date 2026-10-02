@@ -88,8 +88,7 @@ function OtpForm() {
       subtitle="Escribe el código de 6 dígitos que te enviamos por correo."
       hideStepper
     >
-      <h2 className="font-display text-2xl text-[var(--color-navy)]">Revisa tu correo</h2>
-      <p className="mt-1.5 text-sm text-[var(--color-muted)]">
+      <p className="text-sm text-[var(--color-muted)]">
         Enviamos un código de 6 dígitos a{" "}
         <span className="font-medium text-[var(--color-navy)]">{email || "tu correo"}</span>
       </p>

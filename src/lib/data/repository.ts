@@ -9,6 +9,8 @@
 
 import type {
   Answer,
+  AnswerInput,
+  AttemptResult,
   Archetype,
   Attempt,
   CalendarEvent,
@@ -197,4 +199,20 @@ export interface Repository {
   finishAttempt(attempt: Attempt, gradedAnswers: Answer[], outcomeScores: OutcomeScore[]): Promise<void>;
   /** Varios mensajes en una escritura (envío a todo un curso). */
   sendMessages(messages: Message[]): Promise<void>;
+
+  // Intentos calificados por el servidor (Seguridad, Fase 1) -----------------
+  // Lo que usan las pantallas. El navegador manda respuestas sin calificar;
+  // el servidor valida, califica y escribe (src/lib/student/attemptService.ts).
+  // Los métodos de arriba (startAttempt, saveAttemptAnswer, finishAttempt,
+  // submitAttempt) son la escritura de bajo nivel que usa ese servicio, y
+  // desde 0009 la RLS no se los permite a una estudiante.
+  getAttempt(attemptId: string): Promise<Attempt | null>;
+  /** Abre un intento cronometrado (valida intentos disponibles, hora del servidor). */
+  beginAttempt(userId: string, evaluationId: string): Promise<Attempt>;
+  /** Respuesta a una pregunta de un intento abierto: una vez y dentro de su tiempo. */
+  recordAttemptAnswer(userId: string, attemptId: string, questionId: string, answer: AnswerInput): Promise<void>;
+  /** Califica y cierra un intento abierto con lo guardado. Idempotente. */
+  completeAttempt(userId: string, attemptId: string): Promise<AttemptResult>;
+  /** Evaluación sin cronómetro: respuestas completas → intento calificado. */
+  submitAnswers(userId: string, evaluationId: string, answers: Record<string, AnswerInput>): Promise<AttemptResult>;
 }

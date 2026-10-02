@@ -10,6 +10,8 @@ import { Badge } from "@/components/ui/Badge";
 import { ProgressBar } from "@/components/ui/Progress";
 import { Avatar } from "@/components/ui/Avatar";
 import { EmptyState } from "@/components/ui/LockedState";
+import { PageBody, PageHeader } from "@/components/ui/Page";
+import { Select } from "@/components/ui/Input";
 
 export default function TeacherProgressPage() {
   const { data: courses } = useRepoQuery(queryKeys.courses(), () => getRepository().listCourses());
@@ -32,27 +34,21 @@ export default function TeacherProgressPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-8 py-8">
-      <Label>Mini dashboard</Label>
-      <h1 className="mt-2 font-display text-3xl text-[var(--color-navy)]">
-        Progreso de estudiantes
-      </h1>
-
-      <div className="mt-4 flex flex-col gap-1.5">
-        <label>
-          <Label>Curso</Label>
-        </label>
-        <select
+    <div>
+      <PageHeader
+        eyebrow={rows ? `${rows.length} ${rows.length === 1 ? "inscripción" : "inscripciones"}` : "Progreso"}
+        title="Progreso de estudiantes"
+        description="Módulos completados por cada persona inscrita en el curso."
+      />
+      <PageBody>
+      <div className="max-w-sm">
+        <Select
+          id="progress-course"
+          label="Curso"
           value={activeCourseId ?? ""}
           onChange={(e) => setCourseId(e.target.value)}
-          className="w-full max-w-sm rounded-[var(--radius-token)] border border-[var(--color-divider)] bg-white px-3.5 py-2.5 text-sm text-[var(--color-navy)] focus-ring"
-        >
-          {courses.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.title}
-            </option>
-          ))}
-        </select>
+          options={courses.map((c) => ({ value: c.id, label: c.title }))}
+        />
       </div>
 
       <Card bordered className="mt-6 !p-0">
@@ -61,7 +57,7 @@ export default function TeacherProgressPage() {
             <div className="h-6 w-32 animate-pulse rounded bg-[var(--color-divider)]" />
           </div>
         ) : rows.length === 0 ? (
-          <EmptyState title="Nadie inscrito en este curso todavía" />
+          <EmptyState title="Nadie inscrito en este curso todavía." hint="Inscribe estudiantes desde el detalle del curso." />
         ) : (
           rows.map(({ student, percent, completed, total }) => (
             <div
@@ -89,6 +85,7 @@ export default function TeacherProgressPage() {
           ))
         )}
       </Card>
+      </PageBody>
     </div>
   );
 }

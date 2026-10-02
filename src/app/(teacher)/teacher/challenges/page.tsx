@@ -6,10 +6,10 @@ import { useRefresh, useRepoQuery } from "@/lib/query";
 import { getRepository } from "@/lib/data";
 import { genId } from "@/lib/teacher/course";
 import { Card } from "@/components/ui/Card";
-import { Label } from "@/components/ui/Label";
 import { Badge } from "@/components/ui/Badge";
 import { ChallengeForm } from "@/components/teacher/ChallengeForm";
 import type { ChallengeDifficulty } from "@/lib/domain/types";
+import { PageBody, PageHeader } from "@/components/ui/Page";
 
 const DIFFICULTY_TONE = {
   Básico: "lime",
@@ -49,16 +49,13 @@ export default function TeacherChallengesPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-8 py-8">
-      <Label>Contenido</Label>
-      <h1 className="mt-2 font-display text-3xl text-[var(--color-navy)]">
-        Retos
-      </h1>
-      <p className="mt-2 max-w-xl text-sm text-[var(--color-muted)]">
-        Ejercicios cortos en HTML que se autocalifican: al terminar, tu HTML
-        le reporta a EQUIdata cuántas respondió bien el estudiante.
-      </p>
-
+    <div>
+      <PageHeader
+        eyebrow={`${challenges.length} ${challenges.length === 1 ? "reto" : "retos"}`}
+        title="Retos"
+        description="Ejercicios cortos en HTML que se autocalifican: al terminar, el HTML le reporta a EQUIdata cuántas respondió bien la persona."
+      />
+      <PageBody>
       <div className="mt-6 space-y-3">
         {challenges.map((challenge) => (
           <Card key={challenge.id} bordered>
@@ -103,6 +100,7 @@ export default function TeacherChallengesPage() {
           </button>
         )}
       </div>
+      </PageBody>
     </div>
   );
 }

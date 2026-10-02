@@ -69,7 +69,7 @@ export default function EvalPage({
         crumbs={[course?.title ?? "", evaluation.title].filter(Boolean)}
       />
 
-      <div className="mx-auto max-w-3xl px-8 py-8">
+      <div className="mx-auto max-w-3xl px-4 py-6 sm:px-8 sm:py-8">
         <Badge tone="lavender" className="mb-2">
           {KIND_LABEL[evaluation.kind]}
         </Badge>
@@ -121,6 +121,8 @@ export default function EvalPage({
                 isInterest={false}
                 priorArchetypeResult={vm.priorArchetypeResult}
                 archetypes={archetypes}
+                history={vm.history}
+                passingScore={evaluation.passingScore}
               />
             )
           ) : submission.result ? (
@@ -143,6 +145,8 @@ export default function EvalPage({
               isInterest={submission.isInterest}
               priorArchetypeResult={vm.priorArchetypeResult}
               archetypes={archetypes}
+              history={vm.history}
+              passingScore={evaluation.passingScore}
             />
           ) : !submission.started ? (
             <EvalIntroCard
@@ -160,6 +164,7 @@ export default function EvalPage({
               answers={submission.answers}
               unansweredIds={submission.unansweredIds}
               submitting={submission.submitting}
+              submitError={submission.submitError}
               onAnswerChange={submission.onAnswerChange}
               onSubmit={submission.submit}
             />

@@ -7,15 +7,11 @@ import { queryKeys, useRepoQuery } from "@/lib/query";
 import { getRepository } from "@/lib/data";
 import { buildChallengesView } from "@/lib/student/challenges";
 import { Card } from "@/components/ui/Card";
-import { Label } from "@/components/ui/Label";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/LockedState";
+import { PageBody, PageHeader } from "@/components/ui/Page";
 
-const DIFFICULTY_TONE = {
-  Básico: "lime",
-  Intermedio: "lavender",
-  Avanzado: "coral",
-} as const;
+const DIFFICULTY_LEVEL = { Básico: 1, Intermedio: 2, Avanzado: 3 } as const;
 
 export default function ChallengesPage() {
   const { user } = useAuth();
@@ -26,28 +22,29 @@ export default function ChallengesPage() {
     { enabled: !!user },
   );
 
-  return (
-    <div className="mx-auto max-w-4xl px-8 py-8">
-      <Label>Practica con propósito</Label>
-      <h1 className="mt-2 font-display text-3xl text-[var(--color-navy)]">
-        Retos
-      </h1>
-      <p className="mt-2 max-w-xl text-sm text-[var(--color-muted)]">
-        Ejercicios cortos para poner a prueba lo que vas aprendiendo, con
-        datos reales de la Fundación.
-      </p>
+  const done = (challenges ?? []).filter((c) => c.bestAttempt).length;
 
-      <div className="mt-6 space-y-3">
+  return (
+    <div>
+      <PageHeader
+        eyebrow={
+          challenges ? `${challenges.length} ${challenges.length === 1 ? "reto" : "retos"} · ${done} ${done === 1 ? "resuelto" : "resueltos"}` : "Retos"
+        }
+        title="Retos"
+        description="Ejercicios cortos para poner a prueba lo que vas aprendiendo, con datos reales de la Fundación."
+      />
+      <PageBody>
+      <div className="space-y-3">
         {loading ? (
           <div className="h-24 animate-pulse rounded-[var(--radius-card)] bg-[var(--color-divider)]" />
         ) : !challenges || challenges.length === 0 ? (
           <EmptyState
-            title="Todavía no hay retos"
-            hint="Tu profesor los va a ir agregando."
+            title="Todavía no hay retos."
+            hint="Cuando tu profesora publique uno, aparecerá aquí."
           />
         ) : (
           challenges.map(({ challenge, bestAttempt }) => (
-            <Link key={challenge.id} href={`/challenges/${challenge.id}`}>
+            <Link key={challenge.id} href={`/challenges/${challenge.id}`} className="block">
               <Card
                 bordered
                 className="transition-colors hover:border-[var(--color-lavender)]"
@@ -62,9 +59,24 @@ export default function ChallengesPage() {
                         <h3 className="font-display text-base text-[var(--color-navy)]">
                           {challenge.title}
                         </h3>
-                        <Badge tone={DIFFICULTY_TONE[challenge.difficulty]}>
+                        <span
+                          className="inline-flex items-center gap-1.5 font-mono text-[0.625rem] uppercase tracking-[0.1em] text-[var(--color-muted)]"
+                          title={`Dificultad: ${challenge.difficulty}`}
+                        >
+                          <span className="flex gap-0.5" aria-hidden>
+                            {[1, 2, 3].map((n) => (
+                              <span
+                                key={n}
+                                className={
+                                  n <= DIFFICULTY_LEVEL[challenge.difficulty]
+                                    ? "h-2.5 w-1 rounded-full bg-[var(--color-navy)]"
+                                    : "h-2.5 w-1 rounded-full bg-[var(--color-divider)]"
+                                }
+                              />
+                            ))}
+                          </span>
                           {challenge.difficulty}
-                        </Badge>
+                        </span>
                       </div>
                       <p className="mt-1 max-w-md text-sm text-[var(--color-muted)]">
                         {challenge.description}
@@ -86,6 +98,7 @@ export default function ChallengesPage() {
           ))
         )}
       </div>
+      </PageBody>
     </div>
   );
 }

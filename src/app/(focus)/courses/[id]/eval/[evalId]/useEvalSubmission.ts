@@ -1,16 +1,11 @@
 import { useEffect, useState } from "react";
 import { getRepository } from "@/lib/data";
-import {
-  canSubmitAttempt,
-  getBaselineByOutcomeCode,
-  type EvaluationVM,
-} from "@/lib/student/evaluation";
+import { getBaselineByOutcomeCode, type EvaluationVM } from "@/lib/student/evaluation";
 import { getCourseCompletion } from "@/lib/student/course";
-import { gradeAttempt } from "@/lib/logic/grading";
 import { computeArchetypeResult } from "@/lib/logic/archetype";
 import { isCertificateEligible } from "@/lib/logic/certificate";
 import { bestScore } from "@/lib/logic/attempts";
-import type { Answer, OutcomeScore, User } from "@/lib/domain/types";
+import type { Answer, AnswerInput, OutcomeScore, User } from "@/lib/domain/types";
 import type { DraftAnswer } from "@/components/student/QuestionField";
 import { isQuestionAnswered } from "@/components/student/QuestionField";
 
@@ -40,6 +35,7 @@ export function useEvalSubmission(
   const [submitting, setSubmitting] = useState(false);
   const [unansweredIds, setUnansweredIds] = useState<Set<string>>(new Set());
   const [started, setStarted] = useState(false);
+  const [submitError, setSubmitError] = useState<string>();
 
   const isInterest = vm?.evaluation.kind === "interest_onboarding";
 
@@ -62,7 +58,7 @@ export function useEvalSubmission(
 
   async function submit() {
     if (!user || !vm) return;
-    const { evaluation, questions, optionsByQuestion, outcomes, archetypes } = vm;
+    const { evaluation, questions, optionsByQuestion, archetypes } = vm;
 
     // Todas las preguntas son obligatorias — bloquear el envío y resaltar
     // las que falten, sin dejar pasar respuestas vacías.
@@ -74,63 +70,24 @@ export function useEvalSubmission(
       return;
     }
     setUnansweredIds(new Set());
+    setSubmitError(undefined);
 
     setSubmitting(true);
     const repo = getRepository();
 
-    // Revalida el gate justo antes de escribir: la UI ya oculta el
-    // formulario cuando no se puede intentar, pero esta es la barrera real —
-    // protege contra un envío disparado desde una pestaña vieja o DevTools.
-    const stillAllowed = await canSubmitAttempt(
-      repo,
-      user.id,
-      evaluation.id,
-      new Date().toISOString(),
-    );
-    if (!stillAllowed) {
+    // Seguridad, Fase 1: el servidor valida los intentos, califica y guarda.
+    // El navegador solo manda lo que se respondió (no conoce las claves).
+    const inputs: Record<string, AnswerInput> = {};
+    for (const q of questions) inputs[q.id] = answers[q.id] ?? {};
+    let graded: { score: number; outcomeScores: OutcomeScore[] };
+    try {
+      graded = await repo.submitAnswers(user.id, evaluation.id, inputs);
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : "No se pudo enviar. Intenta de nuevo.");
       setSubmitting(false);
       refresh();
       return;
     }
-
-    const attemptId = `att-${evaluation.id}-${crypto.randomUUID()}`;
-
-    const rawAnswers: Answer[] = questions.map((q) => {
-      const d = answers[q.id] ?? {};
-      return {
-        id: `${attemptId}-${q.id}`,
-        attemptId,
-        questionId: q.id,
-        selectedOptionIds: d.selectedOptionIds,
-        openText: d.openText,
-        scaleValue: d.scaleValue,
-        rankingOrder: d.rankingOrder,
-      };
-    });
-
-    const graded = gradeAttempt({
-      attemptId,
-      questions,
-      optionsByQuestion,
-      outcomes,
-      answers: rawAnswers,
-    });
-
-    const nowIso = new Date().toISOString();
-    // Intento + respuestas + resultados por RA, todo o nada (M10 · F3/F4).
-    await repo.submitAttempt(
-      {
-        id: attemptId,
-        userId: user.id,
-        evaluationId: evaluation.id,
-        startedAt: nowIso,
-        submittedAt: nowIso,
-        score: graded.score,
-        status: "submitted",
-      },
-      graded.gradedAnswers,
-      graded.outcomeScores,
-    );
 
     let baseline: Record<string, number> | undefined;
     let certificateEligible: boolean | undefined;
@@ -155,8 +112,15 @@ export function useEvalSubmission(
       certificateReason = elig.reasonLabel;
     }
 
+    // El arquetipo sale de qué opciones eligió (no hay respuestas correctas).
+    const chosen: Answer[] = questions.map((q) => ({
+      id: q.id,
+      attemptId: "",
+      questionId: q.id,
+      ...(answers[q.id] ?? {}),
+    }));
     const archetypeResult = isInterest
-      ? computeArchetypeResult(graded.gradedAnswers, optionsByQuestion, archetypes)
+      ? computeArchetypeResult(chosen, optionsByQuestion, archetypes)
       : null;
 
     setResult({
@@ -188,6 +152,7 @@ export function useEvalSubmission(
     answers,
     result,
     submitting,
+    submitError,
     unansweredIds,
     started,
     isInterest,

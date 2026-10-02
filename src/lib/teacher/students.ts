@@ -48,8 +48,7 @@ export async function buildStudentDetail(
     const structure = structureById.get(course.id);
     let percent = 0;
     if (enrolled && structure) {
-      const { total, completed } = courseCompletion(structure, completedIds);
-      percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+      percent = courseCompletion(structure, completedIds).percent;
     }
     return { course, enrolled, percent };
   });

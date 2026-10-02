@@ -43,7 +43,22 @@ export function CourseSidebar({
     (a, s) => a + s.modules.filter((m) => s.completedModuleIds.has(m.id)).length,
     0,
   );
-  const percent = totalModules ? Math.round((doneModules / totalModules) * 100) : 0;
+  // Mismo cálculo que courseCompletion: sobre todas las sesiones, cada una
+  // con el mismo peso (una sesión sin módulos todavía cuenta 0 %).
+  const percent = vm.sessions.length
+    ? Math.round(
+        (vm.sessions.reduce(
+          (a, s) =>
+            a +
+            (s.modules.length
+              ? s.modules.filter((m) => s.completedModuleIds.has(m.id)).length / s.modules.length
+              : 0),
+          0,
+        ) /
+          vm.sessions.length) *
+          100,
+      )
+    : 0;
 
   if (collapsed) {
     return (
@@ -58,7 +73,7 @@ export function CourseSidebar({
   }
 
   return (
-    <div className="w-[280px] shrink-0 rounded-[var(--radius-card)] border border-[var(--color-divider)] bg-white">
+    <div className="w-full shrink-0 rounded-[var(--radius-card)] border border-[var(--color-divider)] bg-white lg:w-[280px]">
       <div className="flex items-center justify-between p-4 pb-3">
         <div>
           <div className="font-display text-2xl text-[var(--color-navy)]">{percent}%</div>
@@ -68,7 +83,7 @@ export function CourseSidebar({
         </div>
         <button
           onClick={onToggleCollapsed}
-          className="flex h-8 w-8 items-center justify-center rounded-full text-[var(--color-muted)] hover:bg-[var(--color-canvas)] hover:text-[var(--color-navy)]"
+          className="hidden h-8 w-8 items-center justify-center rounded-full text-[var(--color-muted)] hover:bg-[var(--color-canvas)] hover:text-[var(--color-navy)] lg:flex"
           title="Colapsar"
         >
           <ChevronLeft size={16} />

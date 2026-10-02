@@ -14,18 +14,27 @@ export function LockedState({ reason }: { reason: string }) {
   );
 }
 
-/** Estado vacío genérico (0% de progreso, sin datos aún). */
+/**
+ * Estado vacío: dice qué falta y lleva a la acción (auditoría §11.3). Tarjeta
+ * blanca alineada a la izquierda, como el resto del contenido.
+ */
 export function EmptyState({
   title,
   hint,
+  eyebrow,
+  action,
 }: {
   title: string;
-  hint?: string;
+  hint?: React.ReactNode;
+  eyebrow?: string;
+  action?: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center gap-1.5 rounded-[var(--radius-card)] border border-dashed border-[var(--color-divider)] px-6 py-10 text-center">
-      <p className="font-display text-[var(--color-navy)]">{title}</p>
-      {hint && <p className="max-w-xs text-sm text-[var(--color-muted)]">{hint}</p>}
+    <div className="rounded-[var(--radius-card)] border border-[var(--color-divider)] bg-[var(--color-surface)] p-6">
+      {eyebrow && <Label>{eyebrow}</Label>}
+      <p className="mt-1 font-display text-lg text-[var(--color-navy)]">{title}</p>
+      {hint && <p className="mt-1.5 max-w-[60ch] text-sm text-[var(--color-muted)]">{hint}</p>}
+      {action && <div className="mt-4">{action}</div>}
     </div>
   );
 }

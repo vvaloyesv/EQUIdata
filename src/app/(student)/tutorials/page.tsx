@@ -6,6 +6,7 @@ import { useRepoQuery } from "@/lib/query";
 import { getRepository } from "@/lib/data";
 import { Card } from "@/components/ui/Card";
 import { Label } from "@/components/ui/Label";
+import { PageBody, PageHeader } from "@/components/ui/Page";
 
 /** Tutoriales rápidos: mini-módulos sueltos (spec §5.8) — reusan el tipo Module. */
 export default function TutorialsPage() {
@@ -21,21 +22,21 @@ export default function TutorialsPage() {
     );
   }
 
-  return (
-    <div className="mx-auto max-w-5xl px-8 py-8">
-      <Label>Aprendizaje rápido</Label>
-      <h1 className="mt-2 font-display text-3xl text-[var(--color-navy)]">
-        Tutoriales
-      </h1>
-      <p className="mt-2 text-sm text-[var(--color-muted)]">
-        Mini módulos independientes — video o HTML interactivo, algunos con un quiz corto.
-      </p>
+  const minutes = tutorials.reduce((a, t) => a + (t.durationMin ?? 10), 0);
 
-      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+  return (
+    <div>
+      <PageHeader
+        eyebrow={`${tutorials.length} ${tutorials.length === 1 ? "tutorial" : "tutoriales"} · ${minutes} min en total`}
+        title="Tutoriales"
+        description="Módulos cortos e independientes, en video o HTML interactivo. Algunos traen un quiz corto."
+      />
+      <PageBody>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {tutorials.map((t) => {
           const Icon = t.type === "video" ? Video : FileCode2;
           return (
-            <Link key={t.id} href={`/tutorials/${t.id}`}>
+            <Link key={t.id} href={`/tutorials/${t.id}`} className="block">
               <Card bordered className="h-full transition-colors hover:border-[var(--color-lavender)]">
                 <div className="flex items-center gap-2">
                   <Icon size={16} className="text-[var(--color-lavender-text)]" />
@@ -54,6 +55,7 @@ export default function TutorialsPage() {
           );
         })}
       </div>
+      </PageBody>
     </div>
   );
 }

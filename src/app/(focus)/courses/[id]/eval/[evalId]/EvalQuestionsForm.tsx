@@ -13,6 +13,7 @@ export function EvalQuestionsForm({
   answers,
   unansweredIds,
   submitting,
+  submitError,
   onAnswerChange,
   onSubmit,
 }: {
@@ -23,6 +24,8 @@ export function EvalQuestionsForm({
   answers: Record<string, DraftAnswer>;
   unansweredIds: Set<string>;
   submitting: boolean;
+  /** Mensaje del servidor si el envío falló (p. ej. sin intentos). */
+  submitError?: string;
   onAnswerChange: (questionId: string, value: DraftAnswer) => void;
   onSubmit: () => void;
 }) {
@@ -56,6 +59,11 @@ export function EvalQuestionsForm({
         </p>
       )}
 
+      {submitError && (
+        <p className="text-sm text-[var(--color-coral)]" role="alert">
+          {submitError}
+        </p>
+      )}
       <Button onClick={onSubmit} disabled={submitting} className="w-full">
         {submitting ? "Enviando…" : "Enviar respuestas"}
       </Button>

@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/Label";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { PageBody, PageHeader } from "@/components/ui/Page";
 
 export default function NewCoursePage() {
   const router = useRouter();
@@ -40,19 +41,18 @@ export default function NewCoursePage() {
   }
 
   return (
-    <div className="mx-auto max-w-xl px-8 py-8">
-      <Link
-        href="/teacher/courses"
-        className="mb-4 inline-flex items-center gap-1.5 text-sm text-[var(--color-muted)] hover:text-[var(--color-navy)]"
-      >
-        <ArrowLeft size={15} /> Volver a cursos
-      </Link>
-
-      <Label>Contenido</Label>
-      <h1 className="mt-2 font-display text-3xl text-[var(--color-navy)]">
-        Crear curso
-      </h1>
-
+    <div>
+      <PageHeader
+        back={
+          <Link href="/teacher/courses" className="inline-flex items-center gap-1.5 text-white/70 hover:text-white">
+            <ArrowLeft size={15} /> Cursos
+          </Link>
+        }
+        eyebrow="Contenido · nuevo curso"
+        title="Crear curso"
+        description="Después de crearlo agregas sesiones, módulos y evaluaciones."
+      />
+      <PageBody width="reading">
       <Card bordered className="mt-6">
         <form onSubmit={submit} className="space-y-4">
           <Input id="title" name="title" label="Título" placeholder="Fundamentos de estadística" required />
@@ -109,6 +109,7 @@ export default function NewCoursePage() {
           </Button>
         </form>
       </Card>
+      </PageBody>
     </div>
   );
 }

@@ -30,6 +30,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "No autenticado" }, { status: 401 });
   }
 
+  // Solo fotos de nuestro bucket y de la carpeta de quien llama: no se acepta
+  // una URL cualquiera (otro dominio, o la foto de otra persona).
+  const ownFolder = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/avatars/${user.id}/`;
+  if (!avatarUrl.startsWith(ownFolder)) {
+    return NextResponse.json({ error: "URL de imagen inválida" }, { status: 400 });
+  }
+
   const service = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,

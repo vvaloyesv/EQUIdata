@@ -1,13 +1,11 @@
-import { Check, ShieldCheck } from "lucide-react";
+import { Check } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { Logo } from "@/components/ui/Logo";
-import { Label } from "@/components/ui/Label";
 
 /**
- * Shell del flujo de acceso: tarjeta blanca flotante sobre un fondo con glow
- * suave (lavanda/lima/coral, la paleta del logo). Arriba, un stepper
- * horizontal de 3 pasos. Debajo, dos columnas: logo + copy a la izquierda,
- * formulario a la derecha.
+ * Shell del flujo de acceso (U5 · 24/09/2026). Pantalla dividida y plana:
+ * a la izquierda el logo positivo grande y el tagline como pieza tipográfica;
+ * a la derecha el formulario. Sin fondos difuminados (marca §4, auditoría §11.2).
  *
  * Regla de marca (memoria "logo-positivo-grande"): logo positivo siempre,
  * grande, sin recuadro blanco, sobre un fondo que armoniza con su paleta.
@@ -40,77 +38,66 @@ export function AuthShell({
   const steps = compactStepper ? STEPS.slice(0, 1) : STEPS;
 
   return (
-    <div
-      className="flex min-h-dvh items-center justify-center p-4 md:p-6"
-      style={{
-        backgroundColor: "var(--color-canvas)",
-        backgroundImage:
-          "radial-gradient(circle at 12% 8%, rgba(190,164,232,0.30), transparent 42%), radial-gradient(circle at 92% 88%, rgba(187,239,127,0.30), transparent 46%), radial-gradient(circle at 90% 10%, rgba(213,89,71,0.16), transparent 36%)",
-      }}
-    >
-      <div className="w-full max-w-6xl rounded-[28px] bg-white p-8 shadow-[0_1px_3px_rgba(25,41,98,0.06),0_24px_60px_-24px_rgba(25,41,98,0.20)] md:px-20 md:py-11">
-        {/* Stepper horizontal */}
-        {!hideStepper && (
-        <ol className="mb-8 flex items-center justify-center gap-2.5">
-          {steps.map((s, i) => {
-            const done = s.n < step;
-            const active = s.n === step;
-            return (
-              <li key={s.n} className="flex items-center gap-2.5">
-                <div className="flex flex-col items-center gap-1">
-                  <span
-                    className={cn(
-                      "flex h-7 w-7 items-center justify-center rounded-full text-xs font-medium",
-                      done && "bg-[var(--color-lime)] text-[var(--color-navy)]",
-                      active &&
-                        "bg-[var(--color-lavender)] text-white",
-                      !done &&
-                        !active &&
-                        "border border-[var(--color-divider)] bg-white text-[var(--color-hint)]",
-                    )}
-                  >
-                    {done ? <Check size={14} /> : String(s.n).padStart(2, "0")}
-                  </span>
-                  <span
-                    className={cn(
-                      "label-mono",
-                      active ? "!text-[var(--color-navy)]" : "!text-[var(--color-hint)]",
-                    )}
-                  >
-                    {s.label}
-                  </span>
-                </div>
-                {i < steps.length - 1 && (
-                  <div className="mb-3.5 h-px w-12 bg-[var(--color-divider)]" />
-                )}
-              </li>
-            );
-          })}
-        </ol>
-        )}
-
-        {/* Cuerpo: logo + copy / formulario */}
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 md:gap-20">
-          <div className="flex flex-col items-center justify-center text-center">
-            <Logo variant="color" width={185} priority />
-            <h1 className="mt-5 font-display text-[32px] leading-tight text-[var(--color-navy)]">
-              {title}
-            </h1>
-            <div className="my-4 h-1 w-10 rounded-full bg-[var(--color-coral)]" />
-            <p className="text-[15px] text-[var(--color-muted)]">{subtitle}</p>
-            {helperText && (
-              <p className="mt-3 text-[15px] text-[var(--color-muted)]">
-                {helperText}
-              </p>
-            )}
-          </div>
-
-          <div className="flex flex-col justify-center">{children}</div>
+    <div className="grid min-h-dvh bg-[var(--color-canvas)] lg:grid-cols-[1.05fr_1fr]">
+      {/* Marca */}
+      <section className="flex flex-col justify-between gap-6 border-b border-[var(--color-divider)] bg-white px-6 py-6 sm:gap-8 sm:px-10 sm:py-8 lg:border-b-0 lg:border-r lg:px-16 lg:py-14">
+        <Logo variant="color" width={196} priority />
+        <div>
+          {/* En celular va en una línea para que el formulario quede a la vista. */}
+          <p className="font-display text-2xl leading-[1.05] text-[var(--color-navy)] sm:text-6xl lg:text-7xl [&_br]:hidden sm:[&_br]:inline">
+            Aprende.
+            <br />{" "}
+            Analiza.
+            <br />{" "}
+            Transforma<span className="text-[var(--color-coral)]">.</span>
+          </p>
+          <p className="mt-6 hidden max-w-sm text-sm leading-relaxed text-[var(--color-muted)] sm:block">
+            Estadística aplicada a estudios del desarrollo y género, con datos reales de los
+            programas de la Fundación.
+          </p>
         </div>
+        <p className="hidden font-mono text-[0.6875rem] uppercase tracking-[0.12em] text-[var(--color-muted)] lg:block">
+          Fundación WWB Colombia · Uso interno
+        </p>
+      </section>
 
-        <div className="mt-8 flex items-center justify-center gap-1.5">
-         </div>
-      </div>
+      {/* Formulario */}
+      <section className="flex items-start px-6 py-8 sm:items-center sm:px-10 sm:py-10 lg:px-16">
+        <div className="w-full max-w-md">
+          {!hideStepper && (
+            <ol className="mb-8 flex items-center gap-2.5">
+              {steps.map((s, i) => {
+                const done = s.n < step;
+                const active = s.n === step;
+                return (
+                  <li key={s.n} className="flex items-center gap-2.5">
+                    <span
+                      className={cn(
+                        "flex h-7 w-7 items-center justify-center rounded-full font-mono text-xs",
+                        done && "bg-[var(--color-lime)] text-[var(--color-navy)]",
+                        active && "bg-[var(--color-navy)] text-white",
+                        !done && !active && "border border-[var(--color-divider)] bg-white text-[var(--color-hint)]",
+                      )}
+                    >
+                      {done ? <Check size={14} /> : String(s.n).padStart(2, "0")}
+                    </span>
+                    <span className={cn("label-mono", active ? "!text-[var(--color-navy)]" : "!text-[var(--color-hint)]")}>
+                      {s.label}
+                    </span>
+                    {i < steps.length - 1 && <span className="h-px w-8 bg-[var(--color-divider)]" />}
+                  </li>
+                );
+              })}
+            </ol>
+          )}
+
+          <h1 className="text-balance font-display text-3xl leading-tight text-[var(--color-navy)]">{title}</h1>
+          <p className="mt-2 text-[15px] text-[var(--color-muted)]">{subtitle}</p>
+          {helperText && <p className="mt-1 text-sm text-[var(--color-hint)]">{helperText}</p>}
+
+          <div className="mt-8">{children}</div>
+        </div>
+      </section>
     </div>
   );
 }

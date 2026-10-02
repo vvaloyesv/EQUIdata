@@ -8,6 +8,9 @@ import { syncAndListCertificates } from "@/lib/student/certificate";
 import { CertificateView } from "@/components/student/CertificateView";
 import { Label } from "@/components/ui/Label";
 import { EmptyState } from "@/components/ui/LockedState";
+import { PageBody, PageHeader } from "@/components/ui/Page";
+import { queryKeys } from "@/lib/query";
+import { buildDashboard } from "@/lib/student/dashboard";
 
 /** Ancho del thumbnail; CertificateView se auto-escala a este ancho. */
 const CARD_WIDTH = 340;
@@ -20,6 +23,12 @@ export default function CertificationsPage() {
     () => syncAndListCertificates(getRepository(), userId, new Date().toISOString()),
     { enabled: !!user },
   );
+  // Misma lectura que el dashboard (misma clave): para decir qué falta en cada curso.
+  const { data: dash } = useRepoQuery(
+    queryKeys.dashboard(userId),
+    () => buildDashboard(getRepository(), userId, user?.displayName ?? "", new Date().toISOString()),
+    { enabled: !!user },
+  );
 
   if (loading || !certificates) {
     return (
@@ -29,23 +38,51 @@ export default function CertificationsPage() {
     );
   }
 
-  return (
-    <div className="mx-auto max-w-5xl px-8 py-8">
-      <Label>Panel de aprendizaje</Label>
-      <h1 className="mt-2 font-display text-3xl text-[var(--color-navy)]">
-        Certificaciones
-      </h1>
-      <p className="mt-2 text-sm text-[var(--color-muted)]">
-        Los certificados que obtienes al completar y aprobar el diagnóstico
-        final de cada curso.
-      </p>
+  const certified = new Set(certificates.map((c) => c.courseId));
+  const pending = (dash?.courses ?? []).filter((c) => !certified.has(c.course.id));
 
-      <div className="mt-6">
-        {certificates.length === 0 ? (
+  return (
+    <div>
+      <PageHeader
+        eyebrow={`${certificates.length} de ${certificates.length + pending.length} ${
+          certificates.length + pending.length === 1 ? "certificado" : "certificados"
+        }`}
+        title="Certificaciones"
+        description="Se obtienen al completar el curso y aprobar su diagnóstico final."
+      />
+      <PageBody>
+        {certificates.length === 0 && pending.length === 0 ? (
           <EmptyState
-            title="Aún no tienes certificados"
-            hint="Completa un curso y aprueba su diagnóstico final para obtener tu primer certificado."
+            title="Aún no tienes certificados."
+            hint="Inscríbete en un curso para empezar tu ruta hacia el primero."
+            action={
+              <Link href="/courses" className="text-sm text-[var(--color-lavender-text)] hover:underline">
+                Ver cursos disponibles
+              </Link>
+            }
           />
+        ) : certificates.length === 0 ? (
+          <div className="space-y-3">
+            {pending.map((c) => (
+              <EmptyState
+                key={c.course.id}
+                eyebrow={`${c.completedModules}/${c.totalModules} módulos · ${c.percent}%`}
+                title={c.course.title}
+                hint={
+                  c.percent < 100
+                    ? `Te faltan ${c.totalModules - c.completedModules} módulos y el diagnóstico final.`
+                    : c.hasFinalDiagnostic
+                      ? "Contenido completo. Falta aprobar el diagnóstico final."
+                      : "Contenido completo. Este curso todavía no tiene diagnóstico final: tu profesora debe activarlo."
+                }
+                action={
+                  <Link href={`/courses/${c.course.id}`} className="text-sm text-[var(--color-lavender-text)] hover:underline">
+                    Ir al curso
+                  </Link>
+                }
+              />
+            ))}
+          </div>
         ) : (
           <div className="flex flex-wrap gap-6">
             {certificates.map((cert) => (
@@ -88,7 +125,7 @@ export default function CertificationsPage() {
             ))}
           </div>
         )}
-      </div>
+      </PageBody>
     </div>
   );
 }

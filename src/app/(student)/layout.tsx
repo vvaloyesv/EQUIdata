@@ -12,7 +12,7 @@ import {
   Users,
   Award,
 } from "lucide-react";
-import { SidebarNav, type NavItem } from "@/components/ui/SidebarNav";
+import { AppFrame, SidebarNav, type NavItem } from "@/components/ui/SidebarNav";
 import { BrandLoader } from "@/components/ui/BrandLoader";
 import { ProfileCompletionModal } from "@/components/student/ProfileCompletionModal";
 import { queryKeys, useRefresh, useRepoQuery } from "@/lib/query";
@@ -27,14 +27,14 @@ import { compressImage } from "@/lib/student/imageCompression";
 import { features } from "@/lib/features";
 
 const BASE_ITEMS: NavItem[] = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutGrid },
-  { href: "/courses", label: "Mis cursos", icon: BookOpen },
-  { href: "/calendar", label: "Calendario", icon: Calendar },
+  { href: "/dashboard", label: "Inicio", icon: LayoutGrid, mobile: true },
+  { href: "/courses", label: "Mis cursos", icon: BookOpen, mobile: true },
+  { href: "/calendar", label: "Calendario", icon: Calendar, mobile: true },
   // Fachada: oculta en el piloto salvo NEXT_PUBLIC_SHOW_PROJECTS=true (src/lib/features.ts).
   ...(features.projects
     ? [{ href: "/projects", label: "Proyectos", icon: FolderKanban }]
     : []),
-  { href: "/community", label: "Comunidad", icon: Users },
+  { href: "/community", label: "Comunidad", icon: Users, mobile: true },
   // Oculto en el piloto salvo NEXT_PUBLIC_SHOW_MESSAGES=true (src/lib/features.ts).
   ...(features.messages ? [{ href: "/messages", label: "Mensajes", icon: MessageSquare }] : []),
   { href: "/challenges", label: "Retos", icon: Target, groupStart: true },
@@ -48,7 +48,7 @@ export default function StudentLayout({
   children: React.ReactNode;
 }) {
   const { user, loading } = useRequireAuth("student");
-  const { refreshUser } = useAuth();
+  const { refreshUser, logout } = useAuth();
   const refresh = useRefresh();
   const [avatarUploading, setAvatarUploading] = useState(false);
   const userId = user?.id ?? "";
@@ -111,19 +111,27 @@ export default function StudentLayout({
   }
 
   return (
-    <div className="flex">
-      <SidebarNav
-        items={items}
-        profileName={profileName}
-        profileSubtitle={subtitle}
-        streakDays={streakDays ?? undefined}
-        avatarUrl={user.avatarUrl}
-        onAvatarChange={handleAvatarChange}
-        avatarUploading={avatarUploading}
-      />
-      <main className="h-dvh flex-1 overflow-y-auto bg-[var(--color-canvas)]">
+    <>
+      <AppFrame
+        nav={
+          <SidebarNav
+            items={items}
+            profileName={profileName}
+            profileSubtitle={subtitle}
+            streakDays={streakDays ?? undefined}
+            avatarUrl={user.avatarUrl}
+            onAvatarChange={handleAvatarChange}
+            avatarUploading={avatarUploading}
+            settingsHref="/settings"
+            onLogout={() => {
+              logout();
+              window.location.href = "/login";
+            }}
+          />
+        }
+      >
         {children}
-      </main>
+      </AppFrame>
       {isProfileIncomplete(profile ?? null) && (
         <ProfileCompletionModal
           userId={user.id}
@@ -131,6 +139,6 @@ export default function StudentLayout({
           onComplete={() => void refresh()}
         />
       )}
-    </div>
+    </>
   );
 }

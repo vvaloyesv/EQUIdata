@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/Label";
 import { Avatar } from "@/components/ui/Avatar";
 import { Input } from "@/components/ui/Input";
 import { EmptyState } from "@/components/ui/LockedState";
+import { PageBody, PageHeader } from "@/components/ui/Page";
 
 export default function TeacherStudentsPage() {
   const [query, setQuery] = useState("");
@@ -34,12 +35,13 @@ export default function TeacherStudentsPage() {
     : rows;
 
   return (
-    <div className="mx-auto max-w-4xl px-8 py-8">
-      <Label>Directorio</Label>
-      <h1 className="mt-2 font-display text-3xl text-[var(--color-navy)]">
-        Estudiantes
-      </h1>
-
+    <div>
+      <PageHeader
+        eyebrow={`${rows.length} ${rows.length === 1 ? "estudiante" : "estudiantes"}`}
+        title="Estudiantes"
+        description="Cargo, área y avance de cada persona en sus cursos."
+      />
+      <PageBody>
       <Input
         icon={Search}
         placeholder="Buscar por nombre…"
@@ -89,6 +91,7 @@ export default function TeacherStudentsPage() {
           ))
         )}
       </Card>
+      </PageBody>
     </div>
   );
 }

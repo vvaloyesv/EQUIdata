@@ -3,7 +3,7 @@
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Award, Sparkles } from "lucide-react";
+import { Award, ListTree, Sparkles } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
 import { queryKeys, useRefresh, useRepoQuery } from "@/lib/query";
@@ -21,6 +21,9 @@ import { Button } from "@/components/ui/Button";
 import { CourseSidebar } from "@/components/student/CourseSidebar";
 import { ModuleViewer } from "@/components/student/ModuleViewer";
 import { FocusTopBar } from "@/components/student/FocusTopBar";
+import { Label } from "@/components/ui/Label";
+import { RouteHistogram } from "@/components/ui/Charts";
+import { formatDayMonth, relativeDays } from "@/lib/dates";
 
 export default function CoursePage({
   params,
@@ -29,11 +32,15 @@ export default function CoursePage({
 }) {
   const { id: courseId } = use(params);
   const router = useRouter();
-  const requestedModuleId = useSearchParams().get("module") ?? undefined;
+  const searchParams = useSearchParams();
+  const requestedModuleId = searchParams.get("module") ?? undefined;
+  const requestedSessionId = searchParams.get("session") ?? undefined;
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const refresh = useRefresh();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  // Celular: el panel de módulos se abre y cierra con un botón encima del contenido.
+  const [mobileModulesOpen, setMobileModulesOpen] = useState(false);
   const [selectedSessionId, setSelectedSessionId] = useState<string>();
   const [selectedModuleId, setSelectedModuleId] = useState<string>();
   const userId = user?.id ?? "";
@@ -56,7 +63,8 @@ export default function CoursePage({
 
   // Selecciona la sesión y el módulo por defecto cuando cargan los datos.
   // `?module=<id>` (p. ej. desde "En repaso" del dashboard) abre ese módulo
-  // si su sesión está abierta; si no, cae a la sesión por defecto.
+  // si su sesión está abierta; `?session=<id>` (las barras de la ruta) abre
+  // esa sesión. Si no, cae a la sesión por defecto.
   useEffect(() => {
     if (!vm) return;
     if (!selectedSessionId || !vm.sessions.some((s) => s.session.id === selectedSessionId)) {
@@ -68,11 +76,13 @@ export default function CoursePage({
       if (requested) {
         setSelectedSessionId(requested.session.id);
         setSelectedModuleId(requestedModuleId);
+      } else if (requestedSessionId && vm.sessions.some((s) => s.session.id === requestedSessionId)) {
+        setSelectedSessionId(requestedSessionId);
       } else {
         setSelectedSessionId(vm.defaultSessionId);
       }
     }
-  }, [vm, selectedSessionId, requestedModuleId]);
+  }, [vm, selectedSessionId, requestedModuleId, requestedSessionId]);
 
   const activeSession = vm?.sessions.find(
     (s) => s.session.id === selectedSessionId,
@@ -105,6 +115,13 @@ export default function CoursePage({
   );
 
   const flat = flatUnlockedModules(vm);
+  const totalModules = vm.sessions.reduce((a, s) => a + s.modules.length, 0);
+  const doneModules = vm.sessions.reduce(
+    (a, s) => a + s.modules.filter((m) => s.completedModuleIds.has(m.id)).length,
+    0,
+  );
+  const upToDate = !vm.sessions.some((s) => s.status === "in_progress");
+  const nextLocked = vm.sessions.find((s) => s.status === "locked");
   const flatIndex = flat.findIndex((i) => i.module.id === selectedModuleId);
   const prevItem = flatIndex > 0 ? flat[flatIndex - 1] : undefined;
   const nextItem =
@@ -172,7 +189,7 @@ export default function CoursePage({
         nextLabel="Siguiente clase"
       />
 
-      <div className="px-8 py-6">
+      <div className="px-4 py-5 sm:px-8 sm:py-6">
         {!vm.diagnosticDone && vm.diagnosticInitial ? (
           <div>
             <LockedState reason="Completa el diagnóstico inicial para desbloquear el curso." />
@@ -216,19 +233,73 @@ export default function CoursePage({
                 </Link>
               </Card>
             )}
-            <div className="flex items-start gap-6">
-              <CourseSidebar
-                vm={vm}
-                courseId={courseId}
-                activeSessionId={selectedSessionId}
-                activeModuleId={selectedModuleId}
-                onSelectModule={(sessionId, moduleId) => {
-                  setSelectedSessionId(sessionId);
-                  setSelectedModuleId(moduleId);
-                }}
-                collapsed={sidebarCollapsed}
-                onToggleCollapsed={() => setSidebarCollapsed((c) => !c)}
-              />
+            {upToDate && nextLocked && (
+              <Card bordered className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+                <div className="min-w-0">
+                  <Label className="text-[var(--color-lime-text)]">
+                    Al día · {doneModules}/{totalModules} módulos
+                  </Label>
+                  <p className="mt-2 text-sm text-[var(--color-navy)]">
+                    La sesión {String(nextLocked.session.order).padStart(2, "0")} ·{" "}
+                    {nextLocked.session.title}{" "}
+                    {nextLocked.session.unlockDate ? (
+                      <>
+                        se libera el {formatDayMonth(nextLocked.session.unlockDate)} (
+                        {relativeDays(nextLocked.session.unlockDate).toLowerCase()}).
+                      </>
+                    ) : (
+                      <>se abre cuando se cumplan sus condiciones.</>
+                    )}
+                  </p>
+                </div>
+                <RouteHistogram
+                  sessions={vm.sessions.map((s) => ({
+                    order: s.session.order,
+                    title: s.session.title,
+                    percent: s.modules.length
+                      ? Math.round(
+                          (s.modules.filter((m) => s.completedModuleIds.has(m.id)).length /
+                            s.modules.length) *
+                            100,
+                        )
+                      : 0,
+                    upcoming: s.status === "locked",
+                    unlockDate: s.session.unlockDate,
+                  }))}
+                  height={44}
+                  className="sm:max-w-[240px]"
+                />
+              </Card>
+            )}
+            <button
+              type="button"
+              onClick={() => setMobileModulesOpen((v) => !v)}
+              aria-expanded={mobileModulesOpen}
+              className="flex w-full items-center justify-between rounded-[var(--radius-token)] border border-[var(--color-divider)] bg-white px-4 py-3 text-sm text-[var(--color-navy)] lg:hidden"
+            >
+              <span className="flex items-center gap-2">
+                <ListTree size={16} /> Módulos
+              </span>
+              <span className="font-mono text-xs tabular-nums text-[var(--color-muted)]">
+                {doneModules}/{totalModules} · {mobileModulesOpen ? "CERRAR" : "VER"}
+              </span>
+            </button>
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6">
+              <div className={mobileModulesOpen ? "block lg:block" : "hidden lg:block"}>
+                <CourseSidebar
+                  vm={vm}
+                  courseId={courseId}
+                  activeSessionId={selectedSessionId}
+                  activeModuleId={selectedModuleId}
+                  onSelectModule={(sessionId, moduleId) => {
+                    setSelectedSessionId(sessionId);
+                    setSelectedModuleId(moduleId);
+                    setMobileModulesOpen(false);
+                  }}
+                  collapsed={sidebarCollapsed}
+                  onToggleCollapsed={() => setSidebarCollapsed((c) => !c)}
+                />
+              </div>
 
               <div className="min-w-0 flex-1">
                 {activeSession?.status === "locked" ? (
@@ -248,7 +319,7 @@ export default function CoursePage({
                 ) : (
                   <Card bordered className="text-center">
                     <p className="text-[var(--color-navy)]">
-                      ¡Completaste todo el contenido disponible del curso!
+                      Completaste todo el contenido disponible del curso.
                     </p>
                   </Card>
                 )}

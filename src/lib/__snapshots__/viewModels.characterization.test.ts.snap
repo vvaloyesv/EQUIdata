@@ -3,6 +3,8 @@
 exports[`view-models del estudiante > avance de curso 1`] = `
 {
   "completed": 3,
+  "percent": 50,
+  "rawPercent": 50,
   "total": 5,
 }
 `;
@@ -130,9 +132,58 @@ exports[`view-models del estudiante > dashboard 1`] = `
         "teacherName": "Diego Fercho",
         "title": "Fundamentos de Estadística Descriptiva",
       },
+      "hasFinalDiagnostic": true,
       "location": "Sesión 3 de 5",
+      "nextModuleId": "m-s3-2",
+      "nextUnlock": {
+        "date": "2026-09-15T00:00:00.000Z",
+        "order": 4,
+        "title": "Dispersión y variabilidad",
+      },
       "notStarted": false,
-      "percent": 60,
+      "percent": 50,
+      "sessions": [
+        {
+          "id": "s1",
+          "order": 1,
+          "percent": 100,
+          "title": "Introducción y ecosistema de datos",
+          "unlockDate": "2026-07-15T00:00:00.000Z",
+          "upcoming": false,
+        },
+        {
+          "id": "s2",
+          "order": 2,
+          "percent": 100,
+          "title": "Estadística en el trabajo social",
+          "unlockDate": "2026-07-22T00:00:00.000Z",
+          "upcoming": false,
+        },
+        {
+          "id": "s3",
+          "order": 3,
+          "percent": 50,
+          "title": "Medidas de tendencia central",
+          "unlockDate": "2026-07-29T00:00:00.000Z",
+          "upcoming": false,
+        },
+        {
+          "id": "s4",
+          "order": 4,
+          "percent": 0,
+          "title": "Dispersión y variabilidad",
+          "unlockDate": "2026-09-15T00:00:00.000Z",
+          "upcoming": true,
+        },
+        {
+          "id": "s5",
+          "order": 5,
+          "percent": 0,
+          "title": "Visualización y storytelling",
+          "unlockDate": "2026-09-29T00:00:00.000Z",
+          "upcoming": true,
+        },
+      ],
       "totalModules": 5,
     },
     {
@@ -145,9 +196,22 @@ exports[`view-models del estudiante > dashboard 1`] = `
         "teacherName": "Valentina Vélez",
         "title": "Introducción a Python para análisis",
       },
+      "hasFinalDiagnostic": false,
       "location": "Sesión 1 de 1",
+      "nextModuleId": undefined,
+      "nextUnlock": undefined,
       "notStarted": true,
       "percent": 0,
+      "sessions": [
+        {
+          "id": "sp1",
+          "order": 1,
+          "percent": 0,
+          "title": "Primeros pasos con Python",
+          "unlockDate": "2026-08-01T00:00:00.000Z",
+          "upcoming": false,
+        },
+      ],
       "totalModules": 0,
     },
   ],
@@ -209,9 +273,58 @@ exports[`view-models del estudiante > dashboard 1`] = `
       "teacherName": "Diego Fercho",
       "title": "Fundamentos de Estadística Descriptiva",
     },
+    "hasFinalDiagnostic": true,
     "location": "Sesión 3 de 5",
+    "nextModuleId": "m-s3-2",
+    "nextUnlock": {
+      "date": "2026-09-15T00:00:00.000Z",
+      "order": 4,
+      "title": "Dispersión y variabilidad",
+    },
     "notStarted": false,
-    "percent": 60,
+    "percent": 50,
+    "sessions": [
+      {
+        "id": "s1",
+        "order": 1,
+        "percent": 100,
+        "title": "Introducción y ecosistema de datos",
+        "unlockDate": "2026-07-15T00:00:00.000Z",
+        "upcoming": false,
+      },
+      {
+        "id": "s2",
+        "order": 2,
+        "percent": 100,
+        "title": "Estadística en el trabajo social",
+        "unlockDate": "2026-07-22T00:00:00.000Z",
+        "upcoming": false,
+      },
+      {
+        "id": "s3",
+        "order": 3,
+        "percent": 50,
+        "title": "Medidas de tendencia central",
+        "unlockDate": "2026-07-29T00:00:00.000Z",
+        "upcoming": false,
+      },
+      {
+        "id": "s4",
+        "order": 4,
+        "percent": 0,
+        "title": "Dispersión y variabilidad",
+        "unlockDate": "2026-09-15T00:00:00.000Z",
+        "upcoming": true,
+      },
+      {
+        "id": "s5",
+        "order": 5,
+        "percent": 0,
+        "title": "Visualización y storytelling",
+        "unlockDate": "2026-09-29T00:00:00.000Z",
+        "upcoming": true,
+      },
+    ],
     "totalModules": 5,
   },
   "reviewCourseId": "c-estadistica",
@@ -238,8 +351,77 @@ exports[`view-models del estudiante > dashboard 1`] = `
       "videoUrl": "https://www.youtube.com/embed/dQw4w9WgXcQ",
     },
   ],
+  "route": {
+    "course": {
+      "completedModules": 3,
+      "course": {
+        "certificateDescription": "dominando las medidas de tendencia central y dispersión, y aprendiendo a interpretar datos de programas sociales con enfoque de desarrollo y género.",
+        "certificateDurationHours": 4,
+        "description": "Mide, describe e interpreta datos de programas sociales con enfoque de desarrollo y género.",
+        "enrollmentOpen": true,
+        "id": "c-estadistica",
+        "published": true,
+        "teacherName": "Diego Fercho",
+        "title": "Fundamentos de Estadística Descriptiva",
+      },
+      "hasFinalDiagnostic": true,
+      "location": "Sesión 3 de 5",
+      "nextModuleId": "m-s3-2",
+      "nextUnlock": {
+        "date": "2026-09-15T00:00:00.000Z",
+        "order": 4,
+        "title": "Dispersión y variabilidad",
+      },
+      "notStarted": false,
+      "percent": 50,
+      "sessions": [
+        {
+          "id": "s1",
+          "order": 1,
+          "percent": 100,
+          "title": "Introducción y ecosistema de datos",
+          "unlockDate": "2026-07-15T00:00:00.000Z",
+          "upcoming": false,
+        },
+        {
+          "id": "s2",
+          "order": 2,
+          "percent": 100,
+          "title": "Estadística en el trabajo social",
+          "unlockDate": "2026-07-22T00:00:00.000Z",
+          "upcoming": false,
+        },
+        {
+          "id": "s3",
+          "order": 3,
+          "percent": 50,
+          "title": "Medidas de tendencia central",
+          "unlockDate": "2026-07-29T00:00:00.000Z",
+          "upcoming": false,
+        },
+        {
+          "id": "s4",
+          "order": 4,
+          "percent": 0,
+          "title": "Dispersión y variabilidad",
+          "unlockDate": "2026-09-15T00:00:00.000Z",
+          "upcoming": true,
+        },
+        {
+          "id": "s5",
+          "order": 5,
+          "percent": 0,
+          "title": "Visualización y storytelling",
+          "unlockDate": "2026-09-29T00:00:00.000Z",
+          "upcoming": true,
+        },
+      ],
+      "totalModules": 5,
+    },
+    "kind": "in_progress",
+  },
   "stats": {
-    "average": 30,
+    "average": 25,
     "completed": 0,
     "inProgress": 1,
   },
@@ -262,9 +444,58 @@ exports[`view-models del estudiante > dashboard sin progreso 1`] = `
         "teacherName": "Diego Fercho",
         "title": "Fundamentos de Estadística Descriptiva",
       },
+      "hasFinalDiagnostic": true,
       "location": "Sesión 1 de 5",
+      "nextModuleId": "m-s1-1",
+      "nextUnlock": {
+        "date": "2026-09-15T00:00:00.000Z",
+        "order": 4,
+        "title": "Dispersión y variabilidad",
+      },
       "notStarted": true,
       "percent": 0,
+      "sessions": [
+        {
+          "id": "s1",
+          "order": 1,
+          "percent": 0,
+          "title": "Introducción y ecosistema de datos",
+          "unlockDate": "2026-07-15T00:00:00.000Z",
+          "upcoming": false,
+        },
+        {
+          "id": "s2",
+          "order": 2,
+          "percent": 0,
+          "title": "Estadística en el trabajo social",
+          "unlockDate": "2026-07-22T00:00:00.000Z",
+          "upcoming": false,
+        },
+        {
+          "id": "s3",
+          "order": 3,
+          "percent": 0,
+          "title": "Medidas de tendencia central",
+          "unlockDate": "2026-07-29T00:00:00.000Z",
+          "upcoming": false,
+        },
+        {
+          "id": "s4",
+          "order": 4,
+          "percent": 0,
+          "title": "Dispersión y variabilidad",
+          "unlockDate": "2026-09-15T00:00:00.000Z",
+          "upcoming": true,
+        },
+        {
+          "id": "s5",
+          "order": 5,
+          "percent": 0,
+          "title": "Visualización y storytelling",
+          "unlockDate": "2026-09-29T00:00:00.000Z",
+          "upcoming": true,
+        },
+      ],
       "totalModules": 5,
     },
   ],
@@ -310,6 +541,75 @@ exports[`view-models del estudiante > dashboard sin progreso 1`] = `
   "resume": undefined,
   "reviewCourseId": undefined,
   "reviewModules": [],
+  "route": {
+    "course": {
+      "completedModules": 0,
+      "course": {
+        "certificateDescription": "dominando las medidas de tendencia central y dispersión, y aprendiendo a interpretar datos de programas sociales con enfoque de desarrollo y género.",
+        "certificateDurationHours": 4,
+        "description": "Mide, describe e interpreta datos de programas sociales con enfoque de desarrollo y género.",
+        "enrollmentOpen": true,
+        "id": "c-estadistica",
+        "published": true,
+        "teacherName": "Diego Fercho",
+        "title": "Fundamentos de Estadística Descriptiva",
+      },
+      "hasFinalDiagnostic": true,
+      "location": "Sesión 1 de 5",
+      "nextModuleId": "m-s1-1",
+      "nextUnlock": {
+        "date": "2026-09-15T00:00:00.000Z",
+        "order": 4,
+        "title": "Dispersión y variabilidad",
+      },
+      "notStarted": true,
+      "percent": 0,
+      "sessions": [
+        {
+          "id": "s1",
+          "order": 1,
+          "percent": 0,
+          "title": "Introducción y ecosistema de datos",
+          "unlockDate": "2026-07-15T00:00:00.000Z",
+          "upcoming": false,
+        },
+        {
+          "id": "s2",
+          "order": 2,
+          "percent": 0,
+          "title": "Estadística en el trabajo social",
+          "unlockDate": "2026-07-22T00:00:00.000Z",
+          "upcoming": false,
+        },
+        {
+          "id": "s3",
+          "order": 3,
+          "percent": 0,
+          "title": "Medidas de tendencia central",
+          "unlockDate": "2026-07-29T00:00:00.000Z",
+          "upcoming": false,
+        },
+        {
+          "id": "s4",
+          "order": 4,
+          "percent": 0,
+          "title": "Dispersión y variabilidad",
+          "unlockDate": "2026-09-15T00:00:00.000Z",
+          "upcoming": true,
+        },
+        {
+          "id": "s5",
+          "order": 5,
+          "percent": 0,
+          "title": "Visualización y storytelling",
+          "unlockDate": "2026-09-29T00:00:00.000Z",
+          "upcoming": true,
+        },
+      ],
+      "totalModules": 5,
+    },
+    "kind": "not_started",
+  },
   "stats": {
     "average": 0,
     "completed": 0,
@@ -340,6 +640,7 @@ exports[`view-models del estudiante > evaluación — diagnóstico final 1`] = `
     "passed": false,
     "usedAttempts": 0,
   },
+  "history": [],
   "modulesGate": {
     "ok": true,
   },
@@ -463,6 +764,13 @@ exports[`view-models del estudiante > evaluación — diagnóstico inicial 1`] =
     "reasonLabel": "Agotaste tus intentos",
     "usedAttempts": 1,
   },
+  "history": [
+    {
+      "id": "att-diag-ini-1",
+      "score": 45,
+      "submittedAt": "2026-07-10T00:40:00.000Z",
+    },
+  ],
   "modulesGate": {
     "ok": true,
   },
@@ -553,6 +861,7 @@ exports[`view-models del estudiante > evaluación — quiz 1`] = `
     "passed": false,
     "usedAttempts": 0,
   },
+  "history": [],
   "modulesGate": {
     "ok": false,
     "reasonLabel": "Completa los módulos de la sesión antes de rendir el quiz.",
@@ -1589,10 +1898,10 @@ exports[`view-models del profesor > constructor de quiz 1`] = `
 exports[`view-models del profesor > dashboard — todos los cursos 1`] = `
 {
   "activeCourses": 3,
-  "averageProgress": 10,
+  "averageProgress": 8,
   "courseRows": [
     {
-      "avgProgress": 12,
+      "avgProgress": 10,
       "course": {
         "certificateDescription": "dominando las medidas de tendencia central y dispersión, y aprendiendo a interpretar datos de programas sociales con enfoque de desarrollo y género.",
         "certificateDurationHours": 4,
@@ -1659,10 +1968,10 @@ exports[`view-models del profesor > dashboard — todos los cursos 1`] = `
 exports[`view-models del profesor > dashboard — un curso 1`] = `
 {
   "activeCourses": 1,
-  "averageProgress": 12,
+  "averageProgress": 10,
   "courseRows": [
     {
-      "avgProgress": 12,
+      "avgProgress": 10,
       "course": {
         "certificateDescription": "dominando las medidas de tendencia central y dispersión, y aprendiendo a interpretar datos de programas sociales con enfoque de desarrollo y género.",
         "certificateDurationHours": 4,
@@ -1717,7 +2026,7 @@ exports[`view-models del profesor > detalle de estudiante 1`] = `
         "title": "Fundamentos de Estadística Descriptiva",
       },
       "enrolled": true,
-      "percent": 60,
+      "percent": 50,
     },
     {
       "course": {
@@ -1767,7 +2076,7 @@ exports[`view-models del profesor > detalle de estudiante 1`] = `
 exports[`view-models del profesor > directorio de estudiantes 1`] = `
 [
   {
-    "avgProgress": 30,
+    "avgProgress": 25,
     "courseCount": 2,
     "profile": {
       "apellidos": "Mendoza",
@@ -2039,7 +2348,7 @@ exports[`view-models del profesor > editor de curso 1`] = `
 exports[`view-models del profesor > lista de cursos 1`] = `
 [
   {
-    "avgProgress": 12,
+    "avgProgress": 10,
     "course": {
       "certificateDescription": "dominando las medidas de tendencia central y dispersión, y aprendiendo a interpretar datos de programas sociales con enfoque de desarrollo y género.",
       "certificateDurationHours": 4,
@@ -2083,7 +2392,7 @@ exports[`view-models del profesor > progreso por curso 1`] = `
 [
   {
     "completed": 3,
-    "percent": 60,
+    "percent": 50,
     "student": {
       "displayName": "Valentina",
       "email": "valentina.mendoza@fundacionwwbcol.org",

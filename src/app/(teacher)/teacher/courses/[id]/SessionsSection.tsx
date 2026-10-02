@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Label } from "@/components/ui/Label";
 import { Button } from "@/components/ui/Button";
@@ -16,6 +17,7 @@ export function SessionsSection({
   courseId,
   onAddSession,
   onAddModule,
+  onMove,
 }: {
   sessions: TeacherSessionVM[];
   courseId: string;
@@ -25,7 +27,21 @@ export function SessionsSection({
     currentModules: Module[],
     data: NewModuleData,
   ) => Promise<void>;
+  /** Sube (-1) o baja (+1) una sesión en el orden del curso. */
+  onMove?: (index: number, delta: -1 | 1) => Promise<void>;
 }) {
+  const [moving, setMoving] = useState(false);
+
+  async function move(index: number, delta: -1 | 1) {
+    if (!onMove || moving) return;
+    setMoving(true);
+    try {
+      await onMove(index, delta);
+    } finally {
+      setMoving(false);
+    }
+  }
+
   const [adding, setAdding] = useState(false);
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
@@ -34,15 +50,42 @@ export function SessionsSection({
   }
 
   return (
-    <div className="mt-6 space-y-3">
-      <Label>Sesiones</Label>
-      {sessions.map((s) => (
-        <SessionEditor
-          key={s.session.id}
-          vm={s}
-          courseId={courseId}
-          onAddModule={(data) => onAddModule(s.session.id, s.modules, data)}
-        />
+    <div className="space-y-3">
+      <Label>
+        Sesiones · {sessions.length} · {sessions.reduce((a, s) => a + s.modules.length, 0)} módulos
+      </Label>
+      {sessions.map((s, i) => (
+        <div key={s.session.id} className="flex items-start gap-2">
+          {onMove && sessions.length > 1 && (
+            <div className="flex shrink-0 flex-col gap-1 pt-4">
+              <button
+                type="button"
+                aria-label={`Subir la sesión ${s.session.order}`}
+                disabled={i === 0 || moving}
+                onClick={() => void move(i, -1)}
+                className="flex h-7 w-7 items-center justify-center rounded-full text-[var(--color-muted)] hover:bg-white hover:text-[var(--color-navy)] disabled:opacity-25"
+              >
+                <ChevronUp size={15} />
+              </button>
+              <button
+                type="button"
+                aria-label={`Bajar la sesión ${s.session.order}`}
+                disabled={i === sessions.length - 1 || moving}
+                onClick={() => void move(i, 1)}
+                className="flex h-7 w-7 items-center justify-center rounded-full text-[var(--color-muted)] hover:bg-white hover:text-[var(--color-navy)] disabled:opacity-25"
+              >
+                <ChevronDown size={15} />
+              </button>
+            </div>
+          )}
+          <div className="min-w-0 flex-1">
+            <SessionEditor
+              vm={s}
+              courseId={courseId}
+              onAddModule={(data) => onAddModule(s.session.id, s.modules, data)}
+            />
+          </div>
+        </div>
       ))}
 
       {adding ? (

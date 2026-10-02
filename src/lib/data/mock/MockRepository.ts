@@ -18,6 +18,7 @@
 import type { Repository } from "@/lib/data/repository";
 import type {
   Answer,
+  AnswerInput,
   Archetype,
   Attempt,
   CalendarEvent,
@@ -46,6 +47,7 @@ import type {
   User,
 } from "@/lib/domain/types";
 import * as seed from "./seed";
+import * as attemptService from "@/lib/student/attemptService";
 import { AREA_OPTIONS } from "@/lib/brand/lists";
 import {
   AnswerSchema,
@@ -763,5 +765,24 @@ export class MockRepository implements Repository {
   }
   async sendMessages(messages: Message[]) {
     for (const m of messages) await this.sendMessage(m);
+  }
+
+  // En el mock no hay servidor aparte: el servicio corre aquí mismo, con las
+  // mismas reglas que las rutas /api/attempts/*.
+  async getAttempt(attemptId: string) {
+    const found = this.attempts.find((a) => a.id === attemptId);
+    return found ? clone(found) : null;
+  }
+  async beginAttempt(userId: string, evaluationId: string) {
+    return attemptService.beginAttempt(this, userId, evaluationId);
+  }
+  async recordAttemptAnswer(userId: string, attemptId: string, questionId: string, answer: AnswerInput) {
+    return attemptService.recordAttemptAnswer(this, userId, attemptId, questionId, answer);
+  }
+  async completeAttempt(userId: string, attemptId: string) {
+    return attemptService.completeAttempt(this, userId, attemptId);
+  }
+  async submitAnswers(userId: string, evaluationId: string, answers: Record<string, AnswerInput>) {
+    return attemptService.submitAttemptAnswers(this, userId, evaluationId, answers);
   }
 }

@@ -11,7 +11,9 @@ import { Card } from "@/components/ui/Card";
 import { Label } from "@/components/ui/Label";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { ProgressBar } from "@/components/ui/Progress";
+import { EmptyState } from "@/components/ui/LockedState";
+import { PageBody, PageHeader } from "@/components/ui/Page";
+import { RouteHistogram } from "@/components/ui/Charts";
 
 export default function CoursesListPage() {
   const { user } = useAuth();
@@ -53,88 +55,82 @@ export default function CoursesListPage() {
     );
   }
 
+  const completeCount = data.courses.filter((c) => c.totalModules > 0 && c.percent === 100).length;
+
   return (
-    <div className="mx-auto max-w-5xl px-8 py-8">
-      <Label>Panel de aprendizaje</Label>
-      <h1 className="mt-2 font-display text-3xl text-[var(--color-navy)]">
-        Mis cursos
-      </h1>
-
-      <div className="mt-6 space-y-3">
-        {data.courses.map((c) => (
-          <Link key={c.course.id} href={`/courses/${c.course.id}`}>
-            <Card bordered className="transition-colors hover:border-[var(--color-lavender)]">
-              <div className="flex items-center gap-4">
-                <div className="min-w-0 flex-1">
-                  <p className="font-medium text-[var(--color-navy)]">
-                    {c.course.title}
-                  </p>
-                  <p className="mt-1 text-sm text-[var(--color-muted)]">
-                    {c.course.description}
-                  </p>
-                  <div className="mt-2">
-                    <Label>{c.location}</Label>
+    <div>
+      <PageHeader
+        eyebrow={`${data.courses.length} ${data.courses.length === 1 ? "curso" : "cursos"} · ${completeCount} ${
+          completeCount === 1 ? "completo" : "completos"
+        }`}
+        title="Mis cursos"
+        description="Tu ruta en cada curso, sesión por sesión."
+      />
+      <PageBody>
+        <div className="space-y-3">
+          {data.courses.map((c) => (
+            <Link key={c.course.id} href={`/courses/${c.course.id}`} className="block">
+              <Card bordered className="transition-colors hover:border-[var(--color-lavender)]">
+                <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-medium text-[var(--color-navy)]">{c.course.title}</p>
+                      {c.notStarted ? (
+                        <Badge tone="locked">Sin empezar</Badge>
+                      ) : c.percent === 100 ? (
+                        <Badge tone="lime">Completo</Badge>
+                      ) : !c.nextModuleId ? (
+                        <Badge tone="lime">Al día</Badge>
+                      ) : null}
+                    </div>
+                    <p className="mt-1 text-sm text-[var(--color-muted)]">{c.course.description}</p>
+                    <div className="mt-3">
+                      <Label>
+                        {c.location} · {c.completedModules}/{c.totalModules} módulos · {c.percent}%
+                      </Label>
+                    </div>
                   </div>
-                  <ProgressBar value={c.percent} className="mt-2 max-w-sm" />
+                  <RouteHistogram sessions={c.sessions} height={48} className="sm:w-56 sm:shrink-0" />
                 </div>
-                <div className="shrink-0 text-right">
-                  {c.notStarted ? (
-                    <Badge tone="locked">No iniciado</Badge>
-                  ) : c.percent === 100 ? (
-                    <Badge tone="lime">Completado</Badge>
-                  ) : (
-                    <>
-                      <div className="font-display tabular text-lg text-[var(--color-navy)]">
-                        {c.percent}%
-                      </div>
-                      <Label>de avance</Label>
-                    </>
-                  )}
-                </div>
-              </div>
-            </Card>
-          </Link>
-        ))}
-        {data.courses.length === 0 && (
-          <p className="text-sm text-[var(--color-muted)]">
-            Todavía no estás inscrita en ningún curso.
-          </p>
-        )}
-      </div>
-
-      {available && available.length > 0 && (
-        <div className="mt-10">
-          <Label>Cursos disponibles</Label>
-          <p className="mt-1 text-sm text-[var(--color-muted)]">
-            Cursos publicados por el profesor en los que puedes inscribirte.
-          </p>
-          <div className="mt-4 space-y-3">
-            {available.map((course) => (
-              <Card key={course.id} bordered className="flex items-center gap-4">
-                <div className="min-w-0 flex-1">
-                  <p className="font-medium text-[var(--color-navy)]">
-                    {course.title}
-                  </p>
-                  <p className="mt-1 text-sm text-[var(--color-muted)]">
-                    {course.description}
-                  </p>
-                  <div className="mt-2">
-                    <Label>{course.teacherName}</Label>
-                  </div>
-                </div>
-                <Button
-                  variant="secondary"
-                  className="shrink-0 !px-4 !py-2 text-sm"
-                  disabled={enrollingId === course.id}
-                  onClick={() => enroll(course.id)}
-                >
-                  {enrollingId === course.id ? "Inscribiendo…" : "Inscribirme"}
-                </Button>
               </Card>
-            ))}
-          </div>
+            </Link>
+          ))}
+          {data.courses.length === 0 && (
+            <EmptyState
+              title="Todavía no tienes cursos."
+              hint="Inscríbete en uno de los cursos disponibles de abajo."
+            />
+          )}
         </div>
-      )}
+
+        {available && available.length > 0 && (
+          <section className="mt-12">
+            <Label>Cursos disponibles · {available.length}</Label>
+            <p className="mt-1 text-sm text-[var(--color-muted)]">
+              Cursos publicados en los que puedes inscribirte.
+            </p>
+            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+              {available.map((course) => (
+                <Card key={course.id} bordered className="flex flex-col">
+                  <p className="font-medium text-[var(--color-navy)]">{course.title}</p>
+                  <p className="mt-1 flex-1 text-sm text-[var(--color-muted)]">{course.description}</p>
+                  <div className="mt-4 flex items-center justify-between gap-3">
+                    <Label>{course.teacherName}</Label>
+                    <Button
+                      variant="secondary"
+                      className="shrink-0 !px-4 !py-2"
+                      disabled={enrollingId === course.id}
+                      onClick={() => enroll(course.id)}
+                    >
+                      {enrollingId === course.id ? "Inscribiendo…" : "Inscribirme"}
+                    </Button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </section>
+        )}
+      </PageBody>
     </div>
   );
 }

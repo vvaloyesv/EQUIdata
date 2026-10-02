@@ -3,35 +3,29 @@
 import { useState } from "react";
 import Link from "next/link";
 import {
-  ChevronDown,
   ClipboardCheck,
   Download,
   FilePlus2,
   GraduationCap,
-  LogOut,
-  Settings,
   TrendingUp,
   Users,
 } from "lucide-react";
-import { useAuth } from "@/context/AuthContext";
 import { queryKeys, useRepoQuery } from "@/lib/query";
 import { getRepository } from "@/lib/data";
 import { buildTeacherDashboard } from "@/lib/teacher/dashboard";
 import { Card } from "@/components/ui/Card";
 import { Label } from "@/components/ui/Label";
 import { Badge } from "@/components/ui/Badge";
-import { Avatar } from "@/components/ui/Avatar";
 import { BrandLoader } from "@/components/ui/BrandLoader";
 import { ProgressBar } from "@/components/ui/Progress";
-import { StatTile } from "@/components/ui/StatTile";
+import { Select } from "@/components/ui/Input";
+import { BandStat, PageBody, PageHeader } from "@/components/ui/Page";
 import { EmptyState } from "@/components/ui/LockedState";
 
 const ALL_COURSES = "__all__";
 
 export default function TeacherDashboardPage() {
-  const { user, logout } = useAuth();
   const { data: courses } = useRepoQuery(queryKeys.courses(), () => getRepository().listCourses());
-  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   // null = todavía no elegiste nada → usa el primer curso por defecto (no
   // "todos"), para no comparar peras con manzanas apenas se abre la pantalla.
   const [courseFilter, setCourseFilter] = useState<string | null>(null);
@@ -54,106 +48,45 @@ export default function TeacherDashboardPage() {
     distribution.inProgress +
     distribution.atRisk +
     distribution.notStarted;
-  // Solo lo que funciona: "Mi actividad", "Privacidad" y "Soporte" no tenían pantalla.
-  const profileMenuItems = [
-    { label: "Configuración de la cuenta", icon: Settings, href: "/teacher/settings" },
-  ];
-
-  function handleLogout() {
-    logout();
-    window.location.href = "/login";
-  }
+  const activeTitle = activeCourseId
+    ? (courses.find((c) => c.id === activeCourseId)?.title ?? "Curso")
+    : "Todos los cursos";
 
   return (
-    <div className="mx-auto max-w-6xl px-8 py-8">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <Label>Panel del profesor</Label>
-          <h1 className="mt-2 font-display text-3xl text-[var(--color-navy)]">
-            Resumen general
-          </h1>
-        </div>
-        <div className="flex items-end gap-4">
-          <div className="flex flex-col gap-1.5">
-            <Label>Curso</Label>
-            <select
+    <div>
+      <PageHeader
+        eyebrow={`Panel de la profesora · ${activeTitle}`}
+        title="Resumen general"
+        action={
+          <div className="w-72 max-w-full [&_select]:border-white/20">
+            <Select
+              id="dashboard-course"
+              aria-label="Curso"
               value={activeCourseId ?? ALL_COURSES}
               onChange={(e) => setCourseFilter(e.target.value)}
-              className="w-64 rounded-[var(--radius-token)] border border-[var(--color-divider)] bg-white px-3.5 py-2.5 text-sm text-[var(--color-navy)] focus-ring"
-            >
-              {courses.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.title}
-                </option>
-              ))}
-              <option value={ALL_COURSES}>Todos los cursos (agregado)</option>
-            </select>
+              options={[
+                ...courses.map((c) => ({ value: c.id, label: c.title })),
+                { value: ALL_COURSES, label: "Todos los cursos (agregado)" },
+              ]}
+            />
           </div>
-
-          <div className="relative flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setProfileMenuOpen((v) => !v)}
-              className="flex items-center gap-2 rounded-[var(--radius-pill)] bg-white px-2 py-1.5 text-[var(--color-navy)] shadow-[0_1px_3px_rgba(25,41,98,0.08)] transition-colors hover:bg-[var(--color-navy-tint)]"
-            >
-              <Avatar name={user?.displayName ?? "Profesora"} size={36} />
-              <ChevronDown
-                size={16}
-                className={`transition-transform ${profileMenuOpen ? "rotate-180" : ""}`}
-              />
-            </button>
-
-            {profileMenuOpen && (
-              <div className="absolute right-0 top-14 z-20 w-80 rounded-[28px] border border-[var(--color-divider)] bg-white/95 p-3 text-left text-[var(--color-navy)] shadow-[0_24px_60px_-30px_rgba(25,41,98,0.45)] backdrop-blur">
-                <div className="space-y-1">
-                  {profileMenuItems.map((item) => {
-                    const Icon = item.icon;
-                    return (
-                      <Link
-                        key={item.label}
-                        href={item.href}
-                        onClick={() => setProfileMenuOpen(false)}
-                        className="flex w-full items-center gap-3 rounded-[var(--radius-token)] px-3 py-2.5 text-sm font-medium transition-colors hover:bg-[var(--color-navy-tint)]"
-                      >
-                        <Icon size={18} />
-                        {item.label}
-                      </Link>
-                    );
-                  })}
-                </div>
-
-                <div className="my-2 h-px bg-[var(--color-divider)]" />
-
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  className="flex w-full items-center gap-3 rounded-[var(--radius-token)] px-3 py-2.5 text-sm font-semibold transition-colors hover:bg-[var(--color-coral-tint)]"
-                >
-                  <LogOut size={18} />
-                  Cerrar sesión
-                </button>
-              </div>
-            )}
-          </div>
+        }
+      >
+        <div className="flex flex-wrap items-end gap-x-12 gap-y-5">
+          <BandStat value={vm.totalStudents} label="Estudiantes activos" />
+          <BandStat value={vm.activeCourses} label="Cursos activos" />
+          <BandStat value={`${vm.averageProgress}%`} label="Avance promedio" />
+          <BandStat value={vm.quizzesTaken} label="Quizzes rendidos" />
+          {distribution.atRisk > 0 && (
+            <span className="mb-1 rounded-[var(--radius-pill)] bg-[var(--color-coral)] px-3 py-1.5 font-mono text-[0.6875rem] uppercase tracking-[0.1em] text-white">
+              {distribution.atRisk} en riesgo
+            </span>
+          )}
         </div>
-      </div>
+      </PageHeader>
 
-      <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-4">
-        <StatTile
-          value={vm.totalStudents}
-          label="Estudiantes activos"
-          tint="lavender"
-        />
-        <StatTile value={vm.activeCourses} label="Cursos activos" tint="lime" />
-        <StatTile
-          value={`${vm.averageProgress}%`}
-          label="Progreso promedio"
-          tint="coral"
-        />
-        <StatTile value={vm.quizzesTaken} label="Quizes realizados" tint="plain" />
-      </div>
-
-      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[1.3fr_1fr]">
+      <PageBody>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.3fr_1fr]">
         <Card bordered>
           <div className="flex items-center justify-between">
             <Label>Distribución de progreso</Label>
@@ -163,7 +96,7 @@ export default function TeacherDashboardPage() {
           </div>
 
           {distTotal === 0 ? (
-            <EmptyState title="Aún no hay estudiantes inscritos" />
+            <EmptyState title="Aún no hay estudiantes inscritos." hint="Inscribe estudiantes desde el detalle del curso." />
           ) : (
             <>
               <div className="mt-4 flex h-3 overflow-hidden rounded-[var(--radius-pill)] bg-[var(--color-divider)]">
@@ -300,6 +233,7 @@ export default function TeacherDashboardPage() {
           </div>
         </section>
       </div>
+      </PageBody>
     </div>
   );
 }

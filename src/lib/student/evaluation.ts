@@ -41,6 +41,8 @@ export interface EvaluationVM {
    * guardadas al volver a entrar.
    */
   pendingAttempts: Attempt[];
+  /** Intentos ya calificados, del más antiguo al más reciente (historial y gráfico de notas). */
+  history: { id: string; score: number; submittedAt: string }[];
 }
 
 export async function buildEvaluationView(
@@ -107,6 +109,10 @@ export async function buildEvaluationView(
     courseId: evaluation.courseId,
     modulesGate,
     pendingAttempts: isTimedEvaluation(evaluation) ? abandonedAttempts(attempts) : [],
+    history: attempts
+      .filter((a) => a.status === "submitted" && a.submittedAt && a.score !== undefined)
+      .sort((a, b) => a.submittedAt!.localeCompare(b.submittedAt!))
+      .map((a) => ({ id: a.id, score: a.score!, submittedAt: a.submittedAt! })),
   };
 }
 

@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { QuestionForm, type QuestionSubmitData } from "@/components/teacher/QuestionForm";
+import { PageBody, PageHeader } from "@/components/ui/Page";
 
 const TYPE_LABEL: Record<string, string> = {
   single: "Opción única",
@@ -87,24 +88,20 @@ export default function TeacherTutorialQuizPage({
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-8 py-8">
-      <Link
-        href="/teacher/tutorials"
-        className="mb-4 inline-flex items-center gap-1.5 text-sm text-[var(--color-muted)] hover:text-[var(--color-navy)]"
-      >
-        <ArrowLeft size={15} /> Volver a {tutorial.title}
-      </Link>
-
-      <Badge tone="lavender" className="mb-2">
-        Quiz de tutorial
-      </Badge>
-      <h1 className="font-display text-3xl text-[var(--color-navy)]">
-        {evaluation.title}
-      </h1>
-
+    <div>
+      <PageHeader
+        back={
+          <Link href={"/teacher/tutorials"} className="inline-flex items-center gap-1.5 text-white/70 hover:text-white">
+            <ArrowLeft size={15} /> Tutoriales
+          </Link>
+        }
+        eyebrow={`Quiz de tutorial · ${tutorial.title} · ${evaluation.maxAttempts} intentos`}
+        title={evaluation.title}
+      />
+      <PageBody width="reading">
       <Card bordered className="mt-6">
         <Label>Configuración</Label>
-        <form onSubmit={saveSettings} className="mt-3 grid grid-cols-2 gap-3">
+        <form onSubmit={saveSettings} className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Input name="title" label="Título" defaultValue={evaluation.title} required />
           <Input
             name="maxAttempts"
@@ -186,6 +183,7 @@ export default function TeacherTutorialQuizPage({
           )}
         </div>
       </div>
+      </PageBody>
     </div>
   );
 }

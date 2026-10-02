@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { ModuleForm } from "@/components/teacher/ModuleForm";
 import type { Module, ModuleType } from "@/lib/domain/types";
+import { PageBody, PageHeader } from "@/components/ui/Page";
 
 export default function TeacherTutorialsPage() {
   const router = useRouter();
@@ -71,16 +72,13 @@ export default function TeacherTutorialsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-8 py-8">
-      <Label>Contenido</Label>
-      <h1 className="mt-2 font-display text-3xl text-[var(--color-navy)]">
-        Tutoriales
-      </h1>
-      <p className="mt-2 max-w-xl text-sm text-[var(--color-muted)]">
-        Mini módulos sueltos (video o HTML), fuera de la jerarquía de cursos.
-        Opcionalmente pueden tener un quiz corto con % de aprobación.
-      </p>
-
+    <div>
+      <PageHeader
+        eyebrow={`${tutorials.length} ${tutorials.length === 1 ? "tutorial" : "tutoriales"}`}
+        title="Tutoriales"
+        description="Módulos sueltos (video o HTML), fuera de los cursos. Pueden llevar un quiz corto con % de aprobación."
+      />
+      <PageBody>
       <div className="mt-6 space-y-3">
         {tutorials.map(({ tutorial, quiz }) => {
           const Icon = tutorial.type === "video" ? Video : FileCode2;
@@ -142,6 +140,7 @@ export default function TeacherTutorialsPage() {
           </button>
         )}
       </div>
+      </PageBody>
     </div>
   );
 }

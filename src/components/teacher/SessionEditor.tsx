@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/Button";
 import { ModuleForm } from "./ModuleForm";
 import type { TeacherSessionVM } from "@/lib/teacher/course";
 import type { Module, ModuleType } from "@/lib/domain/types";
+import { formatDayMonth } from "@/lib/dates";
 
 export function SessionEditor({
   vm,
@@ -44,7 +45,7 @@ export function SessionEditor({
           <Label className="mt-0.5">
             {vm.modules.length} módulo{vm.modules.length !== 1 && "s"}
             {vm.session.unlockDate &&
-              ` · libera ${new Date(vm.session.unlockDate).toLocaleDateString("es-CO")}`}
+              ` · se libera el ${formatDayMonth(vm.session.unlockDate)} ${new Date(vm.session.unlockDate).getFullYear()}`}
           </Label>
         </div>
         <ChevronDown

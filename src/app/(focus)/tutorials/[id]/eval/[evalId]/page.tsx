@@ -17,6 +17,7 @@ import { Card } from "@/components/ui/Card";
 import { Label } from "@/components/ui/Label";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { ScoreStrip } from "@/components/ui/Charts";
 
 /**
  * Quiz de tutorial (spec M9): mismo motor de Evaluation/Question que los
@@ -70,7 +71,7 @@ export default function TutorialEvalPage({
         crumbs={[evaluation.title]}
       />
 
-      <div className="mx-auto max-w-3xl px-8 py-8">
+      <div className="mx-auto max-w-3xl px-4 py-6 sm:px-8 sm:py-8">
         <Badge tone="lavender" className="mb-2">
           Quiz
         </Badge>
@@ -132,13 +133,24 @@ export default function TutorialEvalPage({
             </Card>
           ) : (
             <Card bordered>
-              <Label>Sin intentos disponibles</Label>
-              <p className="mt-2 text-[var(--color-navy)]">{gate.reasonLabel}</p>
-              {gate.bestScore !== undefined && (
-                <p className="mt-1 text-sm text-[var(--color-muted)]">
-                  Mejor nota hasta ahora: {gate.bestScore}%
-                </p>
+              <Label>
+                Sin intentos disponibles · {gate.usedAttempts}{" "}
+                {gate.usedAttempts === 1 ? "intento" : "intentos"}
+                {gate.bestScore !== undefined ? ` · mejor ${gate.bestScore}%` : ""}
+              </Label>
+              <p className="mt-2 text-[var(--color-navy)]">
+                Usaste todos tus intentos. Si necesitas otro, pídele a tu profesora que te lo reabra.
+              </p>
+              {vm.history.length > 0 && (
+                <ScoreStrip
+                  className="mt-6"
+                  threshold={evaluation.passingScore}
+                  points={vm.history.map((h, i) => ({ id: h.id, value: h.score, label: `Intento ${i + 1}` }))}
+                />
               )}
+              <Link href={`/tutorials/${tutorialId}`} className="mt-5 inline-block">
+                <Button variant="secondary">Repasar el tutorial</Button>
+              </Link>
             </Card>
           )}
         </div>

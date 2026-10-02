@@ -19,11 +19,10 @@ function rawPercent(
   userId: string,
 ): number {
   if (!structure) return 0;
-  const { total, completed } = courseCompletion(
+  return courseCompletion(
     structure,
     completedModuleIdsOf(progress.filter((p) => p.userId === userId)),
-  );
-  return total > 0 ? (completed / total) * 100 : 0;
+  ).rawPercent;
 }
 
 export interface TeacherCourseRow {
@@ -115,12 +114,12 @@ export async function buildCourseProgressRows(
   const structure = structures[0];
 
   const out: CourseProgressRow[] = enrollments.map((e) => {
-    const { total, completed } = structure
+    const { total, completed, percent } = structure
       ? courseCompletion(structure, completedModuleIdsOf(progress.filter((p) => p.userId === e.userId)))
-      : { total: 0, completed: 0 };
+      : { total: 0, completed: 0, percent: 0 };
     return {
       student: users.find((u) => u.id === e.userId) ?? null,
-      percent: total > 0 ? Math.round((completed / total) * 100) : 0,
+      percent,
       completed,
       total,
     };

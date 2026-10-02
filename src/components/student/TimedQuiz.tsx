@@ -9,9 +9,13 @@
  * respuesta se guarda al pulsar Continuar. Si la persona se sale o recarga,
  * `useFinalizeAbandonedAttempts` cierra ese intento con lo guardado la
  * próxima vez que abra el quiz.
+ *
+ * Seguridad, Fase 1: el navegador no califica ni conoce las respuestas
+ * correctas. Abre el intento, manda cada respuesta y pide el cierre; el
+ * servidor valida el tiempo de cada pregunta con su propia hora y califica.
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, Clock } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/Button";
@@ -24,10 +28,9 @@ import {
   type DraftAnswer,
 } from "@/components/student/QuestionField";
 import { getRepository } from "@/lib/data";
-import { gradeAttempt } from "@/lib/logic/grading";
 import { formatCountdown, QUESTION_SECONDS, secondsLeft } from "@/lib/logic/timedQuiz";
-import { canSubmitAttempt, type EvaluationVM } from "@/lib/student/evaluation";
-import type { Answer, Attempt, OutcomeScore } from "@/lib/domain/types";
+import type { EvaluationVM } from "@/lib/student/evaluation";
+import type { AnswerInput, Attempt, OutcomeScore } from "@/lib/domain/types";
 
 export interface TimedQuizResult {
   score: number;
@@ -36,38 +39,13 @@ export interface TimedQuizResult {
 
 type Phase = "intro" | "running" | "finishing" | "error";
 
-function toAnswer(attemptId: string, questionId: string, draft: DraftAnswer): Answer {
-  return {
-    id: `${attemptId}-${questionId}`,
-    attemptId,
-    questionId,
-    selectedOptionIds: draft.selectedOptionIds,
-    openText: draft.openText,
-    scaleValue: draft.scaleValue,
-    rankingOrder: draft.rankingOrder,
-  };
+/** El servidor califica y cierra el intento con lo guardado (las que faltan cuentan como incorrectas). */
+async function closeAttempt(userId: string, attemptId: string): Promise<TimedQuizResult> {
+  const result = await getRepository().completeAttempt(userId, attemptId);
+  return { score: result.score, outcomeScores: result.outcomeScores };
 }
 
-/** Califica y cierra un intento con las respuestas dadas (las que faltan cuentan como incorrectas). */
-async function closeAttempt(
-  vm: EvaluationVM,
-  attempt: Attempt,
-  answers: Answer[],
-): Promise<TimedQuizResult> {
-  const graded = gradeAttempt({
-    attemptId: attempt.id,
-    questions: vm.questions,
-    optionsByQuestion: vm.optionsByQuestion,
-    outcomes: vm.outcomes,
-    answers,
-  });
-  await getRepository().finishAttempt(
-    { ...attempt, status: "submitted", submittedAt: new Date().toISOString(), score: graded.score },
-    graded.gradedAnswers,
-    graded.outcomeScores,
-  );
-  return { score: graded.score, outcomeScores: graded.outcomeScores };
-}
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
  * Cierra los intentos que quedaron abiertos (la persona se salió o recargó a
@@ -89,8 +67,7 @@ export function useFinalizeAbandonedAttempts(
     pending.forEach((a) => handled.current.add(a.id));
     void (async () => {
       for (const attempt of pending) {
-        const saved = await getRepository().listAnswers(attempt.id);
-        await closeAttempt(vm, attempt, saved);
+        await closeAttempt(attempt.userId, attempt.id);
       }
       setClosedAbandoned(true);
       onDone();
@@ -124,12 +101,17 @@ export function TimedQuiz({
   const [left, setLeft] = useState(QUESTION_SECONDS);
 
   const attemptRef = useRef<Attempt | null>(null);
-  const answersRef = useRef<Answer[]>([]);
+  // Envíos de respuestas en orden; el cierre espera a que terminen.
+  const savesRef = useRef<Promise<void>>(Promise.resolve());
+  const sentRef = useRef(new Set<string>());
   const phaseRef = useRef<Phase>("intro");
   phaseRef.current = phase;
 
   const question = questions[index];
-  const options = question ? (optionsByQuestion[question.id] ?? []) : [];
+  const options = useMemo(
+    () => (question ? (optionsByQuestion[question.id] ?? []) : []),
+    [question, optionsByQuestion],
+  );
   const timeUp = phase === "running" && left === 0;
   const isLast = index === questions.length - 1;
 
@@ -161,9 +143,11 @@ export function TimedQuiz({
     () => () => {
       const attempt = attemptRef.current;
       if (attempt && phaseRef.current === "running") {
-        void closeAttempt(vm, attempt, answersRef.current).catch(() => {
-          /* Queda abierto: se cierra la próxima vez que abra el quiz. */
-        });
+        void savesRef.current
+          .then(() => closeAttempt(userId, attempt.id))
+          .catch(() => {
+            /* Queda abierto: se cierra la próxima vez que abra el quiz. */
+          });
       }
     },
     // Solo al desmontar.
@@ -174,24 +158,12 @@ export function TimedQuiz({
   async function start() {
     setStarting(true);
     setStartError(undefined);
-    const repo = getRepository();
-    const nowIso = new Date().toISOString();
     try {
-      // La barrera real: puede haber cambiado desde que se abrió la pantalla.
-      if (!(await canSubmitAttempt(repo, userId, evaluation.id, nowIso))) {
-        setStartError("Ya no tienes intentos disponibles para este quiz.");
-        return;
-      }
-      const attempt: Attempt = {
-        id: `att-${evaluation.id}-${crypto.randomUUID()}`,
-        userId,
-        evaluationId: evaluation.id,
-        startedAt: nowIso,
-        status: "in_progress",
-      };
-      await repo.startAttempt(attempt);
+      // El servidor valida que queden intentos y fija la hora de inicio.
+      const attempt = await getRepository().beginAttempt(userId, evaluation.id);
       attemptRef.current = attempt;
-      answersRef.current = [];
+      savesRef.current = Promise.resolve();
+      sentRef.current = new Set();
       setConfirmOpen(false);
       setInstructionsOpen(false);
       setIndex(0);
@@ -200,38 +172,70 @@ export function TimedQuiz({
       setLeft(QUESTION_SECONDS);
       setPhase("running");
       onRunningChange(true);
-    } catch {
-      setStartError("No se pudo iniciar el quiz. Revisa tu conexión e intenta de nuevo.");
+    } catch (error) {
+      setStartError(
+        error instanceof Error && error.message
+          ? error.message
+          : "No se pudo iniciar el quiz. Revisa tu conexión e intenta de nuevo.",
+      );
     } finally {
       setStarting(false);
     }
   }
+
+  /**
+   * Manda una respuesta una sola vez, en orden y con dos reintentos por si
+   * falla la red. El servidor la rechaza si llegó fuera de tiempo o repetida.
+   */
+  const sendAnswer = useCallback(
+    (questionId: string, answer: AnswerInput) => {
+      const attempt = attemptRef.current;
+      if (!attempt || sentRef.current.has(questionId)) return;
+      sentRef.current.add(questionId);
+      savesRef.current = savesRef.current.then(async () => {
+        for (let i = 0; i < 3; i++) {
+          try {
+            await getRepository().recordAttemptAnswer(userId, attempt.id, questionId, answer);
+            return;
+          } catch {
+            if (i < 2) await wait(700);
+          }
+        }
+      });
+    },
+    [userId],
+  );
+
+  // Si se acaba el tiempo con la pregunta ya respondida, la respuesta cuenta:
+  // se manda en ese momento, sin esperar a que pulse Continuar.
+  useEffect(() => {
+    if (timeUp && question && isQuestionAnswered(question, options, draft)) {
+      sendAnswer(question.id, draft);
+    }
+  }, [timeUp, question, options, draft, sendAnswer]);
 
   const finish = useCallback(async () => {
     const attempt = attemptRef.current;
     if (!attempt) return;
     setPhase("finishing");
     try {
-      const result = await closeAttempt(vm, attempt, answersRef.current);
+      await savesRef.current;
+      const result = await closeAttempt(userId, attempt.id);
       attemptRef.current = null;
       onRunningChange(false);
       onFinished(result);
     } catch {
       setPhase("error");
     }
-  }, [vm, onFinished, onRunningChange]);
+  }, [userId, onFinished, onRunningChange]);
 
   function next() {
     const attempt = attemptRef.current;
     if (!attempt || !question) return;
     // Solo cuenta lo que se alcanzó a responder antes de que venciera el
     // tiempo (tras vencer, la pregunta queda bloqueada y no se puede cambiar).
-    if (isQuestionAnswered(question, options, draft)) {
-      const answer = toAnswer(attempt.id, question.id, draft);
-      answersRef.current = [...answersRef.current.filter((a) => a.questionId !== question.id), answer];
-      // Se guarda en segundo plano: si falla, igual va en el cierre del intento.
-      void getRepository().saveAttemptAnswer(answer).catch(() => {});
-    }
+    // Se guarda en segundo plano; el cierre espera a que termine.
+    if (isQuestionAnswered(question, options, draft)) sendAnswer(question.id, draft);
     if (isLast) {
       void finish();
       return;

@@ -48,7 +48,7 @@ export interface CourseVM {
   interestOnboarding?: Evaluation;
   interestOnboardingDone: boolean;
   sessions: SessionVM[];
-  /** Sesión a mostrar por defecto: la primera en progreso, o la primera bloqueada, o la última. */
+  /** Sesión a mostrar por defecto: la primera en progreso, o la última liberada, o la primera bloqueada. */
   defaultSessionId?: string;
   /** El diagnóstico final se habilita en la última sesión, si el profesor lo activó. */
   finalDiagnosticAvailable: boolean;
@@ -63,19 +63,30 @@ export function completedModuleIdsOf(progress: ModuleProgress[]): Set<string> {
   return new Set(progress.filter((p) => p.completed).map((p) => p.moduleId));
 }
 
-/** Total de módulos del curso y cuántos de ellos están en `completedIds`. */
+/**
+ * Avance de una persona en un curso.
+ * - `total` / `completed`: módulos del curso y cuántos completó.
+ * - `rawPercent` / `percent`: avance sobre TODAS las sesiones del curso, cada
+ *   una con el mismo peso (24/09/2026). Una sesión sin módulos todavía (p. ej.
+ *   la que se libera más adelante) cuenta 0 %: antes el % salía solo de los
+ *   módulos existentes, y un curso con la última sesión vacía daba 100 %.
+ */
 export function courseCompletion(
   structure: CourseStructure,
   completedIds: Set<string>,
-): { total: number; completed: number } {
+): { total: number; completed: number; rawPercent: number; percent: number } {
   let total = 0;
   let completed = 0;
+  let sessionSum = 0;
   for (const s of structure.sessions) {
     const modules = structure.modulesBySession[s.id] ?? [];
+    const done = modules.filter((m) => completedIds.has(m.id)).length;
     total += modules.length;
-    completed += modules.filter((m) => completedIds.has(m.id)).length;
+    completed += done;
+    sessionSum += modules.length ? done / modules.length : 0;
   }
-  return { total, completed };
+  const rawPercent = structure.sessions.length ? (sessionSum / structure.sessions.length) * 100 : 0;
+  return { total, completed, rawPercent, percent: Math.round(rawPercent) };
 }
 
 export async function buildCourseView(
@@ -195,8 +206,11 @@ export function courseViewFrom(
 
   // "completed" ya exige módulos Y quiz resueltos (ver arriba), así que
   // "in_progress" es exactamente "todavía hay algo que hacer aquí".
+  // Si no queda nada pendiente, se abre la última sesión liberada (no la
+  // bloqueada: abrir en un candado era una pantalla vacía — auditoría E3).
   const defaultSessionId =
     sessionVMs.find((s) => s.status === "in_progress")?.session.id ??
+    [...sessionVMs].reverse().find((s) => s.status !== "locked")?.session.id ??
     sessionVMs.find((s) => s.status === "locked")?.session.id ??
     sessionVMs[sessionVMs.length - 1]?.session.id;
 

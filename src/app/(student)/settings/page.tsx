@@ -14,6 +14,7 @@ import {
 } from "@/lib/brand/documentTypes";
 import { Card } from "@/components/ui/Card";
 import { Label } from "@/components/ui/Label";
+import { PageBody, PageHeader } from "@/components/ui/Page";
 import { Button } from "@/components/ui/Button";
 import { Input, Select } from "@/components/ui/Input";
 import { Switch } from "@/components/ui/Switch";
@@ -96,17 +97,15 @@ export default function SettingsPage() {
       : (areaOptions ?? []);
 
   return (
-    <div className="mx-auto max-w-2xl px-8 py-8">
-      <Label>Configuración</Label>
-      <h1 className="mt-1 font-display text-3xl text-[var(--color-navy)]">
-        Tu cuenta
-      </h1>
+    <div>
+      <PageHeader eyebrow="Configuración" title="Tu cuenta" description="Tus datos, tu privacidad en Comunidad y los avisos del dashboard." />
+      <PageBody width="reading">
 
-      <Card bordered className="mt-6">
+      <Card bordered>
         <Label>Datos básicos</Label>
 
         <form onSubmit={submitAccount} className="mt-4 space-y-3">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Input
               id="nombres"
               name="nombres"
@@ -125,7 +124,7 @@ export default function SettingsPage() {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Select
               id="documentType"
               name="documentType"
@@ -212,6 +211,7 @@ export default function SettingsPage() {
           />
         </div>
       </Card>
+      </PageBody>
     </div>
   );
 }

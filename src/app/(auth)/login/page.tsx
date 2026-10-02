@@ -65,9 +65,7 @@ export default function LoginPage() {
       helperText="Si es tu primera vez, después del código completarás tu perfil."
       hideStepper
     >
-      <h2 className="font-display text-2xl text-[var(--color-navy)]">Ingresa a tu cuenta</h2>
-
-      <form onSubmit={submit} className="mt-6 space-y-3.5">
+      <form onSubmit={submit} className="space-y-3.5">
         <Input
           id="email"
           label="Correo electrónico"

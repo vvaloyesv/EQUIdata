@@ -75,7 +75,7 @@ export default function ChallengeDetailPage({
         backLabel="Retos"
         crumbs={[challenge.title]}
       />
-      <div className="mx-auto max-w-3xl space-y-4 px-8 py-8">
+      <div className="mx-auto max-w-3xl space-y-4 px-4 py-6 sm:px-8 sm:py-8">
         <div>
           <h1 className="font-display text-2xl text-[var(--color-navy)]">
             {challenge.title}
@@ -86,23 +86,16 @@ export default function ChallengeDetailPage({
         </div>
 
         {shown && (
-          <Card
-            bordered
-            className="flex items-center justify-between gap-4 border-[var(--color-lime)] bg-[var(--color-lime-tint)]"
-          >
+          <Card bordered className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <Label>
-                {justCompleted ? "Resultado de este intento" : "Tu mejor intento"}
+              <Label className={shown.score === shown.total ? "text-[var(--color-lime-text)]" : undefined}>
+                {justCompleted ? "Resultado de este intento" : "Tu mejor intento"} · {attemptCount}{" "}
+                {attemptCount === 1 ? "intento" : "intentos"}
               </Label>
-              <p className="mt-1 font-display text-xl text-[var(--color-navy)]">
-                {shown.score} / {shown.total}
+              <p className="mt-1 font-display text-3xl tabular-nums text-[var(--color-navy)]">
+                {shown.score}
+                <span className="text-lg text-[var(--color-muted)]"> / {shown.total}</span>
               </p>
-              {attemptCount > 0 && (
-                <p className="mt-1 text-xs text-[var(--color-muted)]">
-                  {attemptCount} {attemptCount === 1 ? "intento" : "intentos"} en
-                  total
-                </p>
-              )}
             </div>
             <Button variant="secondary" onClick={retry}>
               <RefreshCw size={15} /> Reintentar

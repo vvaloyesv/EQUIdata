@@ -16,8 +16,11 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Repository } from "@/lib/data/repository";
+import * as attemptService from "@/lib/student/attemptService";
 import type {
   Answer,
+  AnswerInput,
+  AttemptResult,
   Archetype,
   Attempt,
   CalendarEvent,
@@ -639,7 +642,8 @@ const toCertificate = (r: CertificateRow): Certificate => ({
   durationMin: r.duration_min,
   issuedAt: r.issued_at,
 });
-const fromCertificate = (c: Certificate) => ({
+/** Exportado: /api/certificates/issue devuelve el certificado en formato de fila. */
+export const fromCertificate = (c: Certificate) => ({
   code: c.code,
   user_id: c.userId,
   course_id: c.courseId,
@@ -692,7 +696,7 @@ const toChallengeAttempt = (r: ChallengeAttemptRow): ChallengeAttempt => ({
   total: r.total,
   completedAt: r.completed_at,
 });
-const fromChallengeAttempt = (a: ChallengeAttempt) => ({
+export const fromChallengeAttempt = (a: ChallengeAttempt) => ({
   id: a.id,
   user_id: a.userId,
   challenge_id: a.challengeId,
@@ -710,9 +714,21 @@ function isMissingFunction(error: { code?: string }): boolean {
   return error.code === "PGRST202";
 }
 
-/** PostgREST devuelve una relación uno-a-uno como objeto, o como array según la versión/FK. */
-function one<T>(value: T | T[] | null | undefined): T | undefined {
-  return Array.isArray(value) ? value[0] : (value ?? undefined);
+/** La vista o tabla no existe todavía (migración 0009 sin correr). */
+function isMissingRelation(error: { code?: string }): boolean {
+  return error.code === "PGRST205" || error.code === "42P01";
+}
+
+/** POST a una ruta del propio servidor; lanza con el mensaje que devuelva. */
+async function postJson<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const data = (await res.json().catch(() => ({}))) as T & { error?: string };
+  if (!res.ok) throw new Error(data.error ?? "No se pudo completar la acción. Intenta de nuevo.");
+  return data;
 }
 
 const byOrder = <T extends { order: number }>(a: T, b: T) => a.order - b.order;
@@ -721,10 +737,18 @@ const byOrder = <T extends { order: number }>(a: T, b: T) => a.order - b.order;
 
 export class SupabaseRepository implements Repository {
   private supabase: SupabaseClient;
+  /**
+   * true solo en el servidor, con la service role (src/lib/server/trusted.ts):
+   * ahí las escrituras sensibles (intentos, certificados) van directo a la
+   * base. En el navegador esas mismas operaciones pasan por /api/*, que
+   * valida y califica (Seguridad, Fase 1).
+   */
+  private trusted: boolean;
 
-  /** El cliente se inyecta en pruebas de carga (un cliente por persona virtual); la app usa el del navegador. */
-  constructor(client?: SupabaseClient) {
+  /** El cliente se inyecta en pruebas de carga y en el servidor; la app usa el del navegador. */
+  constructor(client?: SupabaseClient, options: { trusted?: boolean } = {}) {
     this.supabase = client ?? createClient();
+    this.trusted = options.trusted ?? false;
   }
 
   // Identidad ---------------------------------------------------------------
@@ -1316,6 +1340,17 @@ export class SupabaseRepository implements Repository {
     return data ? toCertificate(data as CertificateRow) : null;
   }
   async getCertificateByCode(code: string) {
+    // 0009: verificación de UN certificado por su código, sin poder listar
+    // la tabla (antes la lectura era pública y completa).
+    const { data: rows, error: rpcError } = await this.supabase.rpc("verify_certificate", {
+      p_code: code,
+    });
+    if (!rpcError) {
+      const row = (rows as CertificateRow[] | null)?.[0];
+      return row ? toCertificate(row) : null;
+    }
+    if (!isMissingFunction(rpcError)) throw new Error(rpcError.message);
+
     const { data, error } = await this.supabase
       .from("certificates")
       .select("*")
@@ -1325,6 +1360,16 @@ export class SupabaseRepository implements Repository {
     return data ? toCertificate(data as CertificateRow) : null;
   }
   async issueCertificate(certificate: Certificate) {
+    if (!this.trusted) {
+      // El servidor vuelve a calcular la elegibilidad y arma el certificado
+      // él mismo: del navegador solo toma el curso.
+      const { certificate: issued } = await postJson<{ certificate: CertificateRow | null }>(
+        "/api/certificates/issue",
+        { courseId: certificate.courseId },
+      );
+      if (!issued) throw new Error("Todavía no cumples los requisitos de este certificado.");
+      return toCertificate(issued);
+    }
     const parsed = CertificateSchema.parse(certificate);
     const { data: existing, error: findError } = await this.supabase
       .from("certificates")
@@ -1378,6 +1423,14 @@ export class SupabaseRepository implements Repository {
     return (data as ChallengeAttemptRow[]).map(toChallengeAttempt);
   }
   async createChallengeAttempt(attempt: ChallengeAttempt) {
+    if (!this.trusted) {
+      // 0010: el resultado lo guarda el servidor (quién y cuándo los pone él).
+      const { attempt: saved } = await postJson<{ attempt: ChallengeAttemptRow }>(
+        "/api/challenges/attempt",
+        { challengeId: attempt.challengeId, score: attempt.score, total: attempt.total },
+      );
+      return toChallengeAttempt(saved);
+    }
     const parsed = ChallengeAttemptSchema.parse(attempt);
     const { data, error } = await this.supabase
       .from("challenge_attempts")
@@ -1465,6 +1518,75 @@ export class SupabaseRepository implements Repository {
   }
 
   async getEvaluationDetail(evaluationId: string): Promise<EvaluationDetail | null> {
+    if (this.trusted) return this.getEvaluationDetailWithKeys(evaluationId);
+
+    // 0009: la estudiante lee preguntas y opciones de las vistas *_public, sin
+    // respuestas correctas. Las claves se piden aparte a las tablas base: la
+    // RLS solo se las entrega a la profesora (para la estudiante vienen vacías).
+    const [evalRes, questionsRes, optionsRes, questionKeysRes] = await Promise.all([
+      this.supabase
+        .from("evaluations")
+        .select("*, learning_outcomes!learning_outcomes_evaluation_id_fkey(*)")
+        .eq("id", evaluationId)
+        .maybeSingle(),
+      this.supabase.from("questions_public").select("*").eq("evaluation_id", evaluationId),
+      this.supabase.from("question_options_public").select("*").eq("evaluation_id", evaluationId),
+      this.supabase
+        .from("questions")
+        .select("id, correct_value, tolerance")
+        .eq("evaluation_id", evaluationId),
+    ]);
+    if (questionsRes.error && isMissingRelation(questionsRes.error)) {
+      return this.getEvaluationDetailWithKeys(evaluationId);
+    }
+    for (const r of [evalRes, questionsRes, optionsRes, questionKeysRes]) {
+      if (r.error) throw new Error(r.error.message);
+    }
+    if (!evalRes.data) return null;
+
+    type EvalRow = EvaluationRow & { learning_outcomes: LearningOutcomeRow[] };
+    const evalRow = evalRes.data as EvalRow;
+    const questionKeys = new Map(
+      (questionKeysRes.data as Pick<QuestionRow, "id" | "correct_value" | "tolerance">[]).map((k) => [k.id, k]),
+    );
+    const questionRows = (questionsRes.data as QuestionRow[]).map((q) => ({
+      ...q,
+      correct_value: questionKeys.get(q.id)?.correct_value ?? null,
+      tolerance: questionKeys.get(q.id)?.tolerance ?? null,
+    }));
+
+    // Claves de opciones: solo si la persona pudo leer las de las preguntas
+    // (es la profesora). Para la estudiante no se hace la segunda consulta.
+    let optionKeys = new Map<string, Pick<QuestionOptionRow, "is_correct" | "correct_rank">>();
+    if (questionKeys.size > 0) {
+      const { data: keyRows, error: keyError } = await this.supabase
+        .from("question_options")
+        .select("id, is_correct, correct_rank")
+        .in("question_id", [...questionKeys.keys()]);
+      if (keyError) throw new Error(keyError.message);
+      optionKeys = new Map(
+        (keyRows as (Pick<QuestionOptionRow, "is_correct" | "correct_rank"> & { id: string })[]).map((k) => [k.id, k]),
+      );
+    }
+
+    const optionsByQuestion: Record<string, QuestionOption[]> = {};
+    for (const q of questionRows) optionsByQuestion[q.id] = [];
+    for (const o of optionsRes.data as QuestionOptionRow[]) {
+      const key = optionKeys.get(o.id);
+      (optionsByQuestion[o.question_id] ??= []).push(
+        toOption({ ...o, is_correct: key?.is_correct ?? null, correct_rank: key?.correct_rank ?? null }),
+      );
+    }
+    return {
+      evaluation: toEvaluation(evalRow),
+      questions: questionRows.map(toQuestion).sort(byOrder),
+      optionsByQuestion,
+      outcomes: evalRow.learning_outcomes.map(toOutcome),
+    };
+  }
+
+  /** Con respuestas correctas: servidor (service role) o base sin 0009. */
+  private async getEvaluationDetailWithKeys(evaluationId: string): Promise<EvaluationDetail | null> {
     const { data, error } = await this.supabase
       .from("evaluations")
       .select(
@@ -1504,7 +1626,27 @@ export class SupabaseRepository implements Repository {
     if (ids.length === 0) return [];
     const { data, error } = await this.supabase.from("profiles").select("*").in("id", ids);
     if (error) throw new Error(error.message);
-    return (data as ProfileRow[]).map(toUser);
+    const users = (data as ProfileRow[]).map(toUser);
+
+    // 0009: una estudiante solo lee su propio perfil. Los demás (autores en
+    // Comunidad) salen de public_profiles: nombre y foto, sin correo.
+    const found = new Set(users.map((u) => u.id));
+    const missing = ids.filter((id) => !found.has(id));
+    if (missing.length === 0) return users;
+    const { data: publicRows, error: publicError } = await this.supabase
+      .from("public_profiles")
+      .select("id, display_name, avatar_url, role")
+      .in("id", missing);
+    if (publicError) {
+      if (isMissingRelation(publicError)) return users;
+      throw new Error(publicError.message);
+    }
+    return [
+      ...users,
+      ...(publicRows as Pick<ProfileRow, "id" | "display_name" | "avatar_url" | "role">[]).map((r) =>
+        toUser({ ...r, email: "", last_seen: null } as ProfileRow),
+      ),
+    ];
   }
 
   async listAllEnrollments() {
@@ -1598,23 +1740,25 @@ export class SupabaseRepository implements Repository {
     const [{ data, error }, hiddenIds] = await Promise.all([
       this.supabase
         .from("community_posts")
-        .select(
-          "*, author:profiles!community_posts_author_id_fkey(display_name), community_likes(user_id), community_replies(count)",
-        )
+        .select("*, community_likes(user_id), community_replies(count)")
         .order("created_at", { ascending: false }),
       this.listHiddenCommunityAuthorIds(),
     ]);
     if (error) throw new Error(error.message);
 
     type Row = CommunityPostRow & {
-      author: { display_name: string } | { display_name: string }[] | null;
       community_likes: { user_id: string }[];
       community_replies: { count: number }[];
     };
+    const rows = data as Row[];
+    // 0009: profiles ya no es legible para otras estudiantes; los nombres de
+    // los autores salen de public_profiles (o de profiles, para la profesora).
+    const authors = await this.listUsersByIds([...new Set(rows.map((r) => r.author_id))]);
+    const nameById = new Map(authors.map((u) => [u.id, u.displayName]));
     const hidden = new Set(hiddenIds);
-    return (data as Row[]).map((r) => ({
+    return rows.map((r) => ({
       post: toCommunityPost(r),
-      authorDisplayName: one(r.author)?.display_name ?? "Alguien",
+      authorDisplayName: nameById.get(r.author_id) ?? "Alguien",
       authorHidesName: hidden.has(r.author_id),
       likeUserIds: r.community_likes.map((l) => l.user_id),
       replyCount: r.community_replies[0]?.count ?? 0,
@@ -1700,5 +1844,39 @@ export class SupabaseRepository implements Repository {
     const rows = messages.map((m) => fromMessage(MessageSchema.parse(m)));
     const { error } = await this.supabase.from("messages").insert(rows);
     if (error) throw new Error(error.message);
+  }
+
+  // Intentos calificados por el servidor (Seguridad, Fase 1) -----------------
+  async getAttempt(attemptId: string) {
+    const { data, error } = await this.supabase
+      .from("attempts")
+      .select("*")
+      .eq("id", attemptId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data ? toAttempt(data as AttemptRow) : null;
+  }
+  async beginAttempt(userId: string, evaluationId: string): Promise<Attempt> {
+    if (this.trusted) return attemptService.beginAttempt(this, userId, evaluationId);
+    const { attempt } = await postJson<{ attempt: Attempt }>("/api/attempts/start", { evaluationId });
+    return attempt;
+  }
+  async recordAttemptAnswer(userId: string, attemptId: string, questionId: string, answer: AnswerInput) {
+    if (this.trusted) {
+      return attemptService.recordAttemptAnswer(this, userId, attemptId, questionId, answer);
+    }
+    await postJson("/api/attempts/answer", { attemptId, questionId, answer });
+  }
+  async completeAttempt(userId: string, attemptId: string): Promise<AttemptResult> {
+    if (this.trusted) return attemptService.completeAttempt(this, userId, attemptId);
+    return postJson<AttemptResult>("/api/attempts/finish", { attemptId });
+  }
+  async submitAnswers(
+    userId: string,
+    evaluationId: string,
+    answers: Record<string, AnswerInput>,
+  ): Promise<AttemptResult> {
+    if (this.trusted) return attemptService.submitAttemptAnswers(this, userId, evaluationId, answers);
+    return postJson<AttemptResult>("/api/attempts/submit", { evaluationId, answers });
   }
 }

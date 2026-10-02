@@ -44,3 +44,6 @@ contexto.md
 
 # Prototipos
 prototipo/
+
+# compilación de las verificaciones automáticas
+/.next-verify/

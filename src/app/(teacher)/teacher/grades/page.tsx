@@ -11,6 +11,9 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Avatar } from "@/components/ui/Avatar";
 import { EmptyState } from "@/components/ui/LockedState";
+import { PageBody, PageHeader } from "@/components/ui/Page";
+import { Select } from "@/components/ui/Input";
+import { ScoreStrip } from "@/components/ui/Charts";
 
 const KIND_LABEL: Record<string, string> = {
   diagnostic_initial: "Diagnóstico inicial",
@@ -89,61 +92,50 @@ export default function TeacherGradesPage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-8 py-8">
-      <Label>Resultados</Label>
-      <h1 className="mt-2 font-display text-3xl text-[var(--color-navy)]">
-        Calificaciones
-      </h1>
-
-      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div className="flex flex-col gap-1.5">
-          <label>
-            <Label>Curso</Label>
-          </label>
-          <select
-            value={activeCourseId ?? ""}
-            onChange={(e) => {
-              setCourseId(e.target.value);
-              setEvalId(undefined);
-            }}
-            className="rounded-[var(--radius-token)] border border-[var(--color-divider)] bg-white px-3.5 py-2.5 text-sm text-[var(--color-navy)] focus-ring"
-          >
-            {courses.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.title}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <label>
-            <Label>Evaluación</Label>
-          </label>
-          <select
-            value={activeEvalId ?? ""}
-            onChange={(e) => setEvalId(e.target.value)}
-            className="rounded-[var(--radius-token)] border border-[var(--color-divider)] bg-white px-3.5 py-2.5 text-sm text-[var(--color-navy)] focus-ring"
-          >
-            {(evaluations ?? []).map((e) => (
-              <option key={e.id} value={e.id}>
-                {KIND_LABEL[e.kind]} · {e.title}
-              </option>
-            ))}
-          </select>
-        </div>
+    <div>
+      <PageHeader
+        eyebrow="Resultados por evaluación"
+        title="Calificaciones"
+        description="Notas por estudiante y por resultado de aprendizaje. Desde aquí reabres intentos y exportas el CSV."
+      />
+      <PageBody>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Select
+          id="grades-course"
+          label="Curso"
+          value={activeCourseId ?? ""}
+          onChange={(e) => {
+            setCourseId(e.target.value);
+            setEvalId(undefined);
+          }}
+          options={courses.map((c) => ({ value: c.id, label: c.title }))}
+        />
+        <Select
+          id="grades-evaluation"
+          label="Evaluación"
+          value={activeEvalId ?? ""}
+          onChange={(e) => setEvalId(e.target.value)}
+          options={(evaluations ?? []).map((e) => ({
+            value: e.id,
+            label: `${KIND_LABEL[e.kind] ?? e.kind} · ${e.title}`,
+          }))}
+        />
       </div>
 
       {evaluations && evaluations.length === 0 ? (
         <div className="mt-6">
-          <EmptyState title="Este curso no tiene evaluaciones todavía" />
+          <EmptyState
+            title="Este curso no tiene evaluaciones todavía."
+            hint="Crea un quiz o un diagnóstico desde el detalle del curso."
+          />
         </div>
       ) : loading || !vm ? (
         <div className="mt-6 h-6 w-32 animate-pulse rounded bg-[var(--color-divider)]" />
       ) : (
         <>
-          <div className="mt-6 flex items-center justify-between">
+          <div className="mt-8 flex items-center justify-between">
             <Label>
-              {vm.rows.length} estudiante{vm.rows.length !== 1 && "s"}
+              {vm.rows.length} {vm.rows.length === 1 ? "estudiante" : "estudiantes"} · {vm.evaluation.title}
             </Label>
             <Button
               variant="secondary"
@@ -156,6 +148,28 @@ export default function TeacherGradesPage() {
           </div>
           {exportError && (
             <p className="mt-2 text-right text-xs text-[var(--color-coral)]">{exportError}</p>
+          )}
+
+          {vm.rows.some((r) => r.bestScore !== undefined) && (
+            <Card bordered className="mt-3">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <Label>Mejor nota por estudiante</Label>
+                {vm.evaluation.passingScore !== undefined && (
+                  <span className="font-mono text-xs tabular-nums text-[var(--color-muted)]">
+                    {vm.rows.filter((r) => r.bestScore !== undefined && !r.passed).length} bajo el{" "}
+                    {vm.evaluation.passingScore}% ·{" "}
+                    {vm.rows.filter((r) => r.bestScore === undefined).length} sin intentos
+                  </span>
+                )}
+              </div>
+              <ScoreStrip
+                className="mt-5"
+                threshold={vm.evaluation.passingScore}
+                points={vm.rows
+                  .filter((r) => r.bestScore !== undefined)
+                  .map((r) => ({ id: r.student.id, value: r.bestScore!, label: r.student.displayName }))}
+              />
+            </Card>
           )}
 
           <Card bordered className="mt-3 overflow-x-auto !p-0">
@@ -217,7 +231,7 @@ export default function TeacherGradesPage() {
                               (r.passed ? (
                                 <Badge tone="lime">Aprobado</Badge>
                               ) : (
-                                <Badge tone="coral">No aprobado</Badge>
+                                <Badge tone="coral">Bajo el {vm.evaluation.passingScore}%</Badge>
                               ))}
                           </div>
                         )}
@@ -257,6 +271,7 @@ export default function TeacherGradesPage() {
           </Card>
         </>
       )}
+      </PageBody>
     </div>
   );
 }

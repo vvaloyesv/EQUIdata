@@ -74,7 +74,7 @@ export default function TutorialDetailPage({
         onPrev={prev ? () => router.push(`/tutorials/${prev.id}`) : undefined}
         onNext={next ? () => router.push(`/tutorials/${next.id}`) : undefined}
       />
-      <div className="space-y-4 px-8 py-8">
+      <div className="space-y-4 px-4 py-6 sm:px-8 sm:py-8">
         <ModuleViewer module={tutorial} completed={completed} onComplete={complete} />
         {quiz && (
           <Card

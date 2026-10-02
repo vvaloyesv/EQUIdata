@@ -10,8 +10,8 @@ import { Card } from "@/components/ui/Card";
 import { Label } from "@/components/ui/Label";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { Avatar } from "@/components/ui/Avatar";
 import { ProgressBar } from "@/components/ui/Progress";
+import { PageBody, PageHeader } from "@/components/ui/Page";
 
 export default function StudentDetailPage({
   params,
@@ -53,26 +53,17 @@ export default function StudentDetailPage({
   const { student, profile, courses } = vm;
 
   return (
-    <div className="mx-auto max-w-3xl px-8 py-8">
-      <Link
-        href="/teacher/students"
-        className="mb-4 inline-flex items-center gap-1.5 text-sm text-[var(--color-muted)] hover:text-[var(--color-navy)]"
-      >
-        <ArrowLeft size={15} /> Estudiantes
-      </Link>
-
-      <div className="flex items-center gap-4">
-        <Avatar name={student.displayName} size={48} />
-        <div>
-          <h1 className="font-display text-2xl text-[var(--color-navy)]">
-            {student.displayName}
-          </h1>
-          <Label>
-            {profile ? `${profile.cargo} · ${profile.area}` : "Sin perfil completado"}
-          </Label>
-        </div>
-      </div>
-
+    <div>
+      <PageHeader
+        back={
+          <Link href="/teacher/students" className="inline-flex items-center gap-1.5 text-white/70 hover:text-white">
+            <ArrowLeft size={15} /> Estudiantes
+          </Link>
+        }
+        eyebrow={profile ? `${profile.cargo} · ${profile.area}` : "Sin perfil completado"}
+        title={student.displayName}
+      />
+      <PageBody width="reading">
       <div className="mt-8">
         <Label>Cursos</Label>
         <div className="mt-3 space-y-3">
@@ -103,6 +94,7 @@ export default function StudentDetailPage({
           ))}
         </div>
       </div>
+      </PageBody>
     </div>
   );
 }

@@ -262,6 +262,16 @@ export interface Answer {
   isCorrect?: boolean;
 }
 
+/** Lo que la persona responde a una pregunta, sin calificar (lo que viaja al servidor). */
+export type AnswerInput = Pick<Answer, "selectedOptionIds" | "openText" | "scaleValue" | "rankingOrder">;
+
+/** Resultado de un intento calificado por el servidor. */
+export interface AttemptResult {
+  attemptId: string;
+  score: number;
+  outcomeScores: OutcomeScore[];
+}
+
 /** Desempeño por resultado de aprendizaje en un intento (RA feedback + pre/post). */
 export interface OutcomeScore {
   attemptId: string;

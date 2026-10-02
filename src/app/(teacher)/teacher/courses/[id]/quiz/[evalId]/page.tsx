@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/Input";
 import { OutcomeForm } from "@/components/teacher/OutcomeForm";
 import { ArchetypeForm } from "@/components/teacher/ArchetypeForm";
 import { QuestionForm, type QuestionSubmitData } from "@/components/teacher/QuestionForm";
+import { PageBody, PageHeader } from "@/components/ui/Page";
 
 const KIND_LABEL: Record<string, string> = {
   diagnostic_initial: "Diagnóstico inicial",
@@ -126,24 +127,20 @@ export default function TeacherQuizPage({
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-8 py-8">
-      <Link
-        href={`/teacher/courses/${courseId}`}
-        className="mb-4 inline-flex items-center gap-1.5 text-sm text-[var(--color-muted)] hover:text-[var(--color-navy)]"
-      >
-        <ArrowLeft size={15} /> Volver a {course.title}
-      </Link>
-
-      <Badge tone="lavender" className="mb-2">
-        {KIND_LABEL[evaluation.kind]}
-      </Badge>
-      <h1 className="font-display text-3xl text-[var(--color-navy)]">
-        {evaluation.title}
-      </h1>
-
+    <div>
+      <PageHeader
+        back={
+          <Link href={`/teacher/courses/${courseId}?tab=evaluaciones`} className="inline-flex items-center gap-1.5 text-white/70 hover:text-white">
+            <ArrowLeft size={15} /> {course.title}
+          </Link>
+        }
+        eyebrow={`${KIND_LABEL[evaluation.kind]} · ${evaluation.maxAttempts} intentos${evaluation.passingScore !== undefined ? ` · aprueba con ${evaluation.passingScore}%` : ""}`}
+        title={evaluation.title}
+      />
+      <PageBody width="reading">
       <Card bordered className="mt-6">
         <Label>Configuración</Label>
-        <form onSubmit={saveSettings} className="mt-3 grid grid-cols-2 gap-3">
+        <form onSubmit={saveSettings} className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Input name="title" label="Título" defaultValue={evaluation.title} required />
           <Input
             name="maxAttempts"
@@ -320,6 +317,7 @@ export default function TeacherQuizPage({
           )}
         </div>
       </div>
+      </PageBody>
     </div>
   );
 }

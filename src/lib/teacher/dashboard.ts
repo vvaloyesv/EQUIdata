@@ -98,10 +98,9 @@ export async function buildTeacherDashboard(
 
     for (const e of courseEnrollments) {
       studentIds.add(e.userId);
-      const { total, completed } = structure
-        ? courseCompletion(structure, completedByUser.get(e.userId) ?? new Set())
-        : { total: 0, completed: 0 };
-      const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+      const percent = structure
+        ? courseCompletion(structure, completedByUser.get(e.userId) ?? new Set()).percent
+        : 0;
       percents.push(percent);
       allPercents.push(percent);
     }

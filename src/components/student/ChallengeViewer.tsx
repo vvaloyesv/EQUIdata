@@ -29,11 +29,34 @@ const AUTO_RESIZE_SCRIPT = `
 </script>
 `;
 
+/**
+ * Base de marca para el HTML del reto (auditoría §11.2): sin esto, las
+ * opciones salían con los radios y la tipografía por defecto del navegador.
+ * Va ANTES del HTML de autor, así sus propios estilos siguen mandando.
+ */
+const BRAND_BASE = `
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=Space+Grotesk:wght@500&display=swap">
+<style id="equidata-base">
+  :root { color-scheme: light; }
+  body { margin: 0; padding: 4px; font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 15px; line-height: 1.55; color: #192962; background: #fff; }
+  h1, h2, h3, h4 { font-family: "Space Grotesk", Inter, sans-serif; font-weight: 500; line-height: 1.25; }
+  b, strong { font-weight: 500; }
+  label { cursor: pointer; }
+  input[type="radio"], input[type="checkbox"] { accent-color: #192962; width: 16px; height: 16px; margin: 0 8px 0 0; vertical-align: -3px; }
+  button { font: inherit; font-weight: 500; font-size: 14px; border: 0; border-radius: 999px; padding: 10px 20px; background: #192962; color: #fff; cursor: pointer; }
+  button:hover { background: #0f1c4d; }
+  input[type="text"], input[type="number"], textarea, select { font: inherit; border: 1px solid #edeef2; border-radius: 12px; padding: 8px 12px; color: #192962; }
+</style>
+`;
+
 function withAutoResize(html: string): string {
-  if (html.includes("</body>")) {
-    return html.replace("</body>", `${AUTO_RESIZE_SCRIPT}</body>`);
+  const branded = /<head[^>]*>/i.test(html)
+    ? html.replace(/<head[^>]*>/i, (m) => m + BRAND_BASE)
+    : BRAND_BASE + html;
+  if (branded.includes("</body>")) {
+    return branded.replace("</body>", `${AUTO_RESIZE_SCRIPT}</body>`);
   }
-  return html + AUTO_RESIZE_SCRIPT;
+  return branded + AUTO_RESIZE_SCRIPT;
 }
 
 const MIN_HTML_HEIGHT = 220;

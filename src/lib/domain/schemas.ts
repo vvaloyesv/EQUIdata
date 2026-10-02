@@ -8,6 +8,11 @@
 
 import { z } from "zod";
 
+// Sin compilación con `new Function`: la CSP de la app no permite eval
+// (next.config.ts) y Zod, al probar si puede usarla, dejaba un aviso de
+// violación en la consola aunque luego seguía sin ella.
+z.config({ jitless: true });
+
 const isoDate = z.string().min(1, "Fecha ISO requerida");
 const nonEmpty = z.string().trim().min(1, "No puede estar vacío");
 
